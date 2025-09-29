@@ -4,6 +4,8 @@ import { TaskBar, useWindowManager } from 'wtkrjs';
 import { appState, loadStoredAuth, logout } from './store/appState';
 import LoginWindow from './components/LoginWindow';
 import UserProfileWindow from './components/UserProfileWindow';
+import PublicTimelineWindow from './components/PublicTimelineWindow';
+import LocalTimelineWindow from './components/LocalTimelineWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -51,6 +53,42 @@ const App: React.FC = () => {
     }
   };
 
+  const openPublicTimeline = () => {
+    const timelineWindowId = 'public-timeline';
+    const existingWindow = windows.find((win: any) => win.id === timelineWindowId);
+    
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: timelineWindowId });
+      }
+      focusWindow({ id: timelineWindowId });
+    } else {
+      addWindow({
+        id: timelineWindowId,
+        title: 'Public Timeline',
+        icon: <TimelineIcon />
+      });
+    }
+  };
+
+  const openLocalTimeline = () => {
+    const timelineWindowId = 'local-timeline';
+    const existingWindow = windows.find((win: any) => win.id === timelineWindowId);
+    
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: timelineWindowId });
+      }
+      focusWindow({ id: timelineWindowId });
+    } else {
+      addWindow({
+        id: timelineWindowId,
+        title: 'Local Timeline',
+        icon: <LocalTimelineIcon />
+      });
+    }
+  };
+
   const LogoutIcon = () => (
     <svg width="16" height="16" viewBox="0 0 16 16">
       <path d="M6,2 L6,6 L2,6 L7,11 L12,6 L8,6 L8,2 Z" fill="currentColor" />
@@ -61,6 +99,25 @@ const App: React.FC = () => {
     <svg width="16" height="16" viewBox="0 0 16 16">
       <circle cx="8" cy="5" r="3" fill="none" stroke="currentColor" strokeWidth="1" />
       <path d="M2,14 Q8,10 14,14" fill="none" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  );
+
+  const TimelineIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16">
+      <rect x="2" y="2" width="12" height="2" fill="currentColor" />
+      <rect x="2" y="6" width="12" height="2" fill="currentColor" />
+      <rect x="2" y="10" width="12" height="2" fill="currentColor" />
+      <rect x="2" y="14" width="12" height="2" fill="currentColor" />
+    </svg>
+  );
+
+  const LocalTimelineIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16">
+      <rect x="2" y="2" width="12" height="2" fill="currentColor" />
+      <rect x="2" y="6" width="8" height="2" fill="currentColor" />
+      <rect x="2" y="10" width="10" height="2" fill="currentColor" />
+      <rect x="2" y="14" width="6" height="2" fill="currentColor" />
+      <circle cx="13" cy="7" r="2" fill="none" stroke="currentColor" strokeWidth="1" />
     </svg>
   );
 
@@ -84,10 +141,15 @@ const App: React.FC = () => {
     },
     {
       type: 'item' as const,
-      text: 'Timeline',
-      onClick: () => {
-        console.log('Timeline clicked - feature coming soon');
-      }
+      text: 'Public Timeline',
+      icon: <TimelineIcon />,
+      onClick: openPublicTimeline
+    },
+    {
+      type: 'item' as const,
+      text: 'Local Timeline',
+      icon: <LocalTimelineIcon />,
+      onClick: openLocalTimeline
     },
     {
       type: 'item' as const,
@@ -146,6 +208,44 @@ const App: React.FC = () => {
         if (win.id === 'user-profile') {
           return (
             <UserProfileWindow
+              key={win.id}
+              id={win.id}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => removeWindow({ id: win.id })}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id === 'public-timeline') {
+          return (
+            <PublicTimelineWindow
+              key={win.id}
+              id={win.id}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => removeWindow({ id: win.id })}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id === 'local-timeline') {
+          return (
+            <LocalTimelineWindow
               key={win.id}
               id={win.id}
               isFocused={win.isFocused}
