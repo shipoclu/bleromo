@@ -51,7 +51,7 @@ const App: React.FC = () => {
   const startMenuItems = snap.isLoggedIn ? [
     {
       type: 'label' as const,
-      text: snap.userHandle || 'Unknown User',
+      text: snap.userData?.display_name || snap.userHandle || 'Unknown User',
       icon: <UserIcon />
     },
     {

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Authorization Complete</title>
+    <style>
+        body {
+            font-family: 'MS Sans Serif', sans-serif;
+            font-size: 12px;
+            background-color: #c0c0c0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .status {
+            padding: 20px;
+            border: 2px inset #c0c0c0;
+            background-color: #c0c0c0;
+            text-align: center;
+            max-width: 400px;
+        }
+        .loading {
+            margin: 10px 0;
+        }
+        .error {
+            color: #800000;
+            font-weight: bold;
+        }
+        .success {
+            color: #008000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">
+        <h2>OAuth Authorization</h2>
+        <div id="status" class="loading">Processing authorization...</div>
+    </div>
+
+    <script>
+        async function handleOAuthCallback() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                const state = urlParams.get('state');
+                const error = urlParams.get('error');
+
+                if (error) {
+                    throw new Error(`OAuth error: ${error}`);
+                }
+
+                if (!code) {
+                    throw new Error('No authorization code received');
+                }
+
+                if (!state) {
+                    throw new Error('No state parameter received');
+                }
+
+                // Parse state to get user handle and server info
+                const stateData = JSON.parse(state);
+                const { userHandle } = stateData;
+                const [, domain] = userHandle.split('@');
+                const serverUrl = `https://${domain}`;
+
+                statusDiv.textContent = 'Exchanging authorization code for access token...';
+
+                // Get app credentials from sessionStorage
+                const appDataString = sessionStorage.getItem('oauth_app_data');
+                if (!appDataString) {
+                    throw new Error('No app credentials found in session storage');
+                }
+                
+                const appData = JSON.parse(appDataString);
+                if (!appData.client_id || !appData.client_secret) {
+                    throw new Error('Invalid app credentials in session storage');
+                }
+
+                // Exchange authorization code for access token
+                const tokenResponse = await fetch(`${serverUrl}/oauth/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        grant_type: 'authorization_code',
+                        code: code,
+                        client_id: appData.client_id,
+                        client_secret: appData.client_secret,
+                        redirect_uri: `${window.location.origin}/oauth-callback.html`,
+                        scope: 'read write follow push'
+                    })
+                });
+
+                if (!tokenResponse.ok) {
+                    throw new Error(`Token exchange failed: ${tokenResponse.status}`);
+                }
+
+                const tokenData = await tokenResponse.json();
+                const accessToken = tokenData.access_token;
+
+                if (!accessToken) {
+                    throw new Error('No access token received');
+                }
+
+                statusDiv.textContent = 'Fetching user information...';
+
+                // Verify credentials and get user data
+                const userResponse = await fetch(`${serverUrl}/api/v1/accounts/verify_credentials`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (!userResponse.ok) {
+                    throw new Error(`User verification failed: ${userResponse.status}`);
+                }
+
+                const userData = await userResponse.json();
+
+                statusDiv.innerHTML = '<span class="success">Authorization successful! Redirecting...</span>';
+
+                // Send success message to opener window
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'OAUTH_SUCCESS',
+                        token: accessToken,
+                        userData: userData,
+                        serverUrl: serverUrl
+                    }, window.location.origin);
+                } else {
+                    console.error('OAuth callback error: window.opener is not available - cannot send success message to parent window');
+                }
+
+                // Close this window after a short delay
+                setTimeout(() => {
+                    window.close();
+                }, 2000);
+
+            } catch (error) {
+                console.error('OAuth callback error:', error);
+                statusDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+                
+                // Send error message to opener window
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'OAUTH_ERROR',
+                        error: error.message
+                    }, window.location.origin);
+                } else {
+                    console.error('OAuth callback error: window.opener is not available - cannot send error message to parent window');
+                }
+            }
+        }
+
+        // Run the callback handler when page loads
+        window.addEventListener('load', handleOAuthCallback);
+    </script>
+</body>
+</html>
