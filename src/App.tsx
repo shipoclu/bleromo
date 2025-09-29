@@ -3,6 +3,7 @@ import { useSnapshot } from 'valtio';
 import { TaskBar, useWindowManager } from 'wtkrjs';
 import { appState, loadStoredAuth, logout } from './store/appState';
 import LoginWindow from './components/LoginWindow';
+import UserProfileWindow from './components/UserProfileWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -11,6 +12,11 @@ const App: React.FC = () => {
     focusWindow,
     minimizeWindow,
     restoreWindow,
+    addWindow,
+    removeWindow,
+    maximizeWindow,
+    moveWindow,
+    resizeWindow,
   } = useWindowManager();
 
   useEffect(() => {
@@ -24,6 +30,24 @@ const App: React.FC = () => {
         restoreWindow({ id: windowId });
       }
       focusWindow({ id: windowId });
+    }
+  };
+
+  const openUserProfile = () => {
+    const profileWindowId = 'user-profile';
+    const existingWindow = windows.find((win: any) => win.id === profileWindowId);
+    
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: profileWindowId });
+      }
+      focusWindow({ id: profileWindowId });
+    } else {
+      addWindow({
+        id: profileWindowId,
+        title: 'User Profile',
+        icon: <UserIcon />
+      });
     }
   };
 
@@ -50,9 +74,10 @@ const App: React.FC = () => {
 
   const startMenuItems = snap.isLoggedIn ? [
     {
-      type: 'label' as const,
+      type: 'item' as const,
       text: snap.userData?.display_name || snap.userHandle || 'Unknown User',
-      icon: <UserIcon />
+      icon: <UserIcon />,
+      onClick: openUserProfile
     },
     {
       type: 'separator' as const
@@ -117,11 +142,28 @@ const App: React.FC = () => {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {windows.map((win: any) => (
-        <div key={win.id}>
-          {/* Windows will be rendered here when we add them */}
-        </div>
-      ))}
+      {windows.map((win: any) => {
+        if (win.id === 'user-profile') {
+          return (
+            <UserProfileWindow
+              key={win.id}
+              id={win.id}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => removeWindow({ id: win.id })}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        return null;
+      })}
       
       <div style={{ marginTop: 'auto' }}>
         <TaskBar
