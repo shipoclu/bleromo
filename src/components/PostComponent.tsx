@@ -120,7 +120,9 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           backgroundColor: '#ffffff',
           marginBottom: '8px',
           fontFamily: 'MS Sans Serif, sans-serif',
-          fontSize: '12px'
+          fontSize: '12px',
+          overflow: 'hidden',
+          wordWrap: 'break-word'
         }}>
         {/* Boost header */}
         <div style={{
@@ -129,12 +131,22 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           gap: '4px',
           marginBottom: '6px',
           color: '#008000',
-          fontSize: '11px'
+          fontSize: '11px',
+          overflow: 'hidden'
         }}>
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
             <path d="M1 8l4-4v3h5.5a2.5 2.5 0 010 5H9v-2h1.5a.5.5 0 000-1H5v3l-4-4zM15 8l-4 4V9H5.5a2.5 2.5 0 010-5H7v2H5.5a.5.5 0 000 1H11V4l4 4z"/>
           </svg>
-          <strong>{status.account.display_name || status.account.username}</strong> boosted
+          <strong style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flexShrink: 1,
+            minWidth: 0
+          }}>
+            {status.account.display_name || status.account.username}
+          </strong> 
+          <span style={{ flexShrink: 0 }}>boosted</span>
         </div>
         
         {/* Original post */}
@@ -153,7 +165,9 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         backgroundColor: '#ffffff',
         marginBottom: '8px',
         fontFamily: 'MS Sans Serif, sans-serif',
-        fontSize: '12px'
+        fontSize: '12px',
+        overflow: 'hidden',
+        wordWrap: 'break-word'
       }}>
       {/* Header with avatar and user info */}
       <div style={{
@@ -170,15 +184,33 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
             border: '1px solid #808080'
           }}
         />
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '6px',
-            marginBottom: '2px'
+            marginBottom: '2px',
+            overflow: 'hidden'
           }}>
-            <strong>{status.account.display_name || status.account.username}</strong>
-            <span style={{ color: '#808080' }}>@{status.account.acct}</span>
+            <strong style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flexShrink: 1,
+              minWidth: 0
+            }}>
+              {status.account.display_name || status.account.username}
+            </strong>
+            <span style={{ 
+              color: '#808080',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flexShrink: 1,
+              minWidth: 0
+            }}>
+              @{status.account.acct}
+            </span>
           </div>
           <div style={{ 
             fontSize: '11px', 
