@@ -2,21 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { DesktopWindow } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
-import NotificationComponent from './NotificationComponent';
-
-interface Account {
-  id: string;
-  username: string;
-  acct: string;
-  display_name: string;
-  avatar: string;
-  url: string;
-}
+import PostComponent from './PostComponent';
 
 interface Status {
   id: string;
   created_at: string;
-  account: Account;
+  account: {
+    id: string;
+    username: string;
+    acct: string;
+    display_name: string;
+    avatar: string;
+    url: string;
+  };
   content: string;
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
@@ -36,16 +34,7 @@ interface Status {
   url: string;
 }
 
-interface Notification {
-  id: string;
-  type: 'mention' | 'reblog' | 'favourite' | 'follow' | 'follow_request' | 'poll' | 'status' | 'pleroma:emoji_reaction';
-  created_at: string;
-  account: Account;
-  status?: Status;
-  emoji?: string;
-}
-
-interface NotificationsWindowProps {
+interface HomeTimelineWindowProps {
   id: string;
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
@@ -63,7 +52,7 @@ interface NotificationsWindowProps {
   zIndex: number;
 }
 
-const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
+const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
   id,
   onImageClick,
   onVideoClick,
@@ -81,14 +70,13 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [statuses, setStatuses] = useState<Status[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [maxId, setMaxId] = useState<string | null>(null);
-  const [sinceId, setSinceId] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchNotifications = async (loadMore = false, loadNewer = false) => {
+  const fetchTimeline = async (loadMore = false) => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
     setIsLoading(true);
@@ -101,53 +89,43 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
       
       if (loadMore && maxId) {
         params.append('max_id', maxId);
-      } else if (loadNewer && sinceId) {
-        params.append('since_id', sinceId);
       }
 
-      const response = await fetch(`${snap.serverUrl}/api/v1/notifications?${params}`, {
+      const response = await fetch(`${snap.serverUrl}/api/v1/timelines/home?${params}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
         }
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch notifications: ${response.status}`);
+        throw new Error(`Failed to fetch home timeline: ${response.status}`);
       }
 
-      const newNotifications: Notification[] = await response.json();
+      const newStatuses: Status[] = await response.json();
+      
+      // Filter to only show notes and boosts (no other activity types)
+      const filteredStatuses = newStatuses.filter(status => 
+        status.reblog || (!status.reblog && status.content)
+      );
 
-      if (loadNewer) {
-        // Add to the beginning (newer notifications)
-        setNotifications(prev => [...newNotifications, ...prev]);
-        if (newNotifications.length > 0) {
-          setSinceId(newNotifications[0].id);
-        }
-      } else if (loadMore) {
-        // Add to the end (older notifications)
-        setNotifications(prev => [...prev, ...newNotifications]);
+      if (loadMore) {
+        setStatuses(prev => [...prev, ...filteredStatuses]);
       } else {
-        // Replace all notifications (refresh)
-        setNotifications(newNotifications);
-        if (newNotifications.length > 0) {
-          setSinceId(newNotifications[0].id);
-        }
+        setStatuses(filteredStatuses);
       }
 
       // Set up pagination
-      if (newNotifications.length > 0) {
-        if (!loadNewer) {
-          setMaxId(newNotifications[newNotifications.length - 1].id);
-        }
-        setHasMore(newNotifications.length === 20); // Full page means there might be more
+      if (newStatuses.length > 0) {
+        setMaxId(newStatuses[newStatuses.length - 1].id);
+        // Only stop showing "Load More" if API returned no posts at all
+        setHasMore(true);
       } else {
-        if (loadMore) {
-          setHasMore(false);
-        }
+        // No posts returned from API - end of timeline
+        setHasMore(false);
       }
 
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      console.error('Error fetching home timeline:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsLoading(false);
@@ -155,33 +133,26 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
   };
 
   const handleRefresh = () => {
-    setSinceId(null);
     setMaxId(null);
     setHasMore(true);
-    fetchNotifications(false, false);
+    fetchTimeline(false);
   };
 
-  const handleLoadNewer = () => {
-    if (!isLoading && sinceId) {
-      fetchNotifications(false, true);
-    }
-  };
-
-  const handleLoadOlder = () => {
+  const handleLoadMore = () => {
     if (!isLoading && hasMore) {
-      fetchNotifications(true, false);
+      fetchTimeline(true);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
+    fetchTimeline();
   }, []);
 
   return (
     <DesktopWindow
       id={id}
-      title="Notifications"
-      initialPosition={{ x: 140, y: 90 }}
+      title="Home Timeline"
+      initialPosition={{ x: 80, y: 30 }}
       initialSize={{ width: 500, height: 600 }}
       isFocused={isFocused}
       isMinimized={isMinimized}
@@ -230,24 +201,9 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
           >
             {isLoading ? 'Loading...' : 'Refresh'}
           </button>
-
-          <button 
-            onClick={handleLoadNewer}
-            disabled={isLoading || !sinceId}
-            style={{
-              padding: '4px 12px',
-              fontSize: '12px',
-              border: '2px outset #c0c0c0',
-              backgroundColor: '#c0c0c0',
-              cursor: (isLoading || !sinceId) ? 'default' : 'pointer',
-              opacity: (isLoading || !sinceId) ? 0.6 : 1
-            }}
-          >
-            Load Newer
-          </button>
           
           <span style={{ color: '#808080', fontSize: '11px' }}>
-            {notifications.length} notifications
+            {statuses.length} home posts
           </span>
         </div>
 
@@ -284,31 +240,25 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
             </div>
           )}
 
-          {notifications.length === 0 && !isLoading && !error && (
+          {statuses.length === 0 && !isLoading && !error && (
             <div style={{ 
               textAlign: 'center', 
               padding: '40px',
               color: '#808080'
             }}>
-              No notifications found
+              No home posts found
             </div>
           )}
 
-          {notifications.map((notification) => (
-            <NotificationComponent 
-              key={notification.id} 
-              notification={notification} 
-              onImageClick={onImageClick} 
-              onVideoClick={onVideoClick}
-              onConversationClick={onConversationClick}
-            />
+          {statuses.map((status) => (
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} />
           ))}
 
-          {/* Load older button */}
-          {hasMore && notifications.length > 0 && (
+          {/* Load more button */}
+          {hasMore && statuses.length > 0 && (
             <div style={{ textAlign: 'center', marginTop: '16px' }}>
               <button 
-                onClick={handleLoadOlder}
+                onClick={handleLoadMore}
                 disabled={isLoading}
                 style={{
                   padding: '6px 20px',
@@ -319,19 +269,19 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
                   opacity: isLoading ? 0.6 : 1
                 }}
               >
-                {isLoading ? 'Loading...' : 'Load Older'}
+                {isLoading ? 'Loading...' : 'Load More'}
               </button>
             </div>
           )}
 
-          {!hasMore && notifications.length > 0 && (
+          {!hasMore && statuses.length > 0 && (
             <div style={{ 
               textAlign: 'center', 
               padding: '20px',
               color: '#808080',
               fontSize: '11px'
             }}>
-              End of notifications
+              End of home timeline
             </div>
           )}
         </div>
@@ -340,4 +290,4 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
   );
 };
 
-export default NotificationsWindow;
+export default HomeTimelineWindow;

@@ -4,27 +4,31 @@ import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
 
+interface Account {
+  id: string;
+  username: string;
+  acct: string;
+  display_name: string;
+  avatar: string;
+  url: string;
+}
+
+interface MediaAttachment {
+  id: string;
+  type: 'image' | 'video' | 'audio' | 'unknown';
+  url: string;
+  preview_url: string;
+  description?: string;
+}
+
 interface Status {
   id: string;
   created_at: string;
-  account: {
-    id: string;
-    username: string;
-    acct: string;
-    display_name: string;
-    avatar: string;
-    url: string;
-  };
+  account: Account;
   content: string;
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
-  media_attachments: Array<{
-    id: string;
-    type: 'image' | 'video' | 'audio' | 'unknown';
-    url: string;
-    preview_url: string;
-    description?: string;
-  }>;
+  media_attachments: MediaAttachment[];
   replies_count: number;
   reblogs_count: number;
   favourites_count: number;
@@ -34,8 +38,14 @@ interface Status {
   url: string;
 }
 
-interface PublicTimelineWindowProps {
+interface ConversationContext {
+  ancestors: Status[];
+  descendants: Status[];
+}
+
+interface ConversationWindowProps {
   id: string;
+  statusId: string;
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
@@ -52,8 +62,9 @@ interface PublicTimelineWindowProps {
   zIndex: number;
 }
 
-const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
+const ConversationWindow: React.FC<ConversationWindowProps> = ({
   id,
+  statusId,
   onImageClick,
   onVideoClick,
   onConversationClick,
@@ -70,62 +81,47 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
-  const [statuses, setStatuses] = useState<Status[]>([]);
+  const [conversation, setConversation] = useState<ConversationContext | null>(null);
+  const [originalStatus, setOriginalStatus] = useState<Status | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [maxId, setMaxId] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
 
-  const fetchTimeline = async (loadMore = false) => {
+  const fetchConversation = async () => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const params = new URLSearchParams({
-        limit: '20'
-      });
-      
-      if (loadMore && maxId) {
-        params.append('max_id', maxId);
+      // Fetch the original status and its context
+      const [statusResponse, contextResponse] = await Promise.all([
+        fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}`, {
+          headers: {
+            'Authorization': `Bearer ${snap.accessToken}`
+          }
+        }),
+        fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/context`, {
+          headers: {
+            'Authorization': `Bearer ${snap.accessToken}`
+          }
+        })
+      ]);
+
+      if (!statusResponse.ok) {
+        throw new Error(`Failed to fetch status: ${statusResponse.status}`);
+      }
+      if (!contextResponse.ok) {
+        throw new Error(`Failed to fetch conversation context: ${contextResponse.status}`);
       }
 
-      const response = await fetch(`${snap.serverUrl}/api/v1/timelines/public?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${snap.accessToken}`
-        }
-      });
+      const status: Status = await statusResponse.json();
+      const context: ConversationContext = await contextResponse.json();
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch timeline: ${response.status}`);
-      }
-
-      const newStatuses: Status[] = await response.json();
-      
-      // Filter to only show notes and boosts (no other activity types)
-      const filteredStatuses = newStatuses.filter(status => 
-        status.reblog || (!status.reblog && status.content)
-      );
-
-      if (loadMore) {
-        setStatuses(prev => [...prev, ...filteredStatuses]);
-      } else {
-        setStatuses(filteredStatuses);
-      }
-
-      // Set up pagination
-      if (newStatuses.length > 0) {
-        setMaxId(newStatuses[newStatuses.length - 1].id);
-        // Only stop showing "Load More" if API returned no posts at all
-        setHasMore(true);
-      } else {
-        // No posts returned from API - end of timeline
-        setHasMore(false);
-      }
+      setOriginalStatus(status);
+      setConversation(context);
 
     } catch (err) {
-      console.error('Error fetching timeline:', err);
+      console.error('Error fetching conversation:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsLoading(false);
@@ -133,27 +129,33 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
   };
 
   const handleRefresh = () => {
-    setMaxId(null);
-    setHasMore(true);
-    fetchTimeline(false);
-  };
-
-  const handleLoadMore = () => {
-    if (!isLoading && hasMore) {
-      fetchTimeline(true);
-    }
+    fetchConversation();
   };
 
   useEffect(() => {
-    fetchTimeline();
-  }, []);
+    fetchConversation();
+  }, [statusId]);
+
+  const getAllPosts = (): Status[] => {
+    if (!conversation || !originalStatus) return [];
+    
+    return [
+      ...conversation.ancestors,
+      originalStatus,
+      ...conversation.descendants
+    ];
+  };
+
+  const isOriginalPost = (status: Status): boolean => {
+    return originalStatus ? status.id === originalStatus.id : false;
+  };
 
   return (
     <DesktopWindow
       id={id}
-      title="Public Timeline"
-      initialPosition={{ x: 100, y: 50 }}
-      initialSize={{ width: 500, height: 600 }}
+      title={`Conversation`}
+      initialPosition={{ x: 160, y: 110 }}
+      initialSize={{ width: 600, height: 700 }}
       isFocused={isFocused}
       isMinimized={isMinimized}
       isMaximized={isMaximized}
@@ -203,7 +205,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
           </button>
           
           <span style={{ color: '#808080', fontSize: '11px' }}>
-            {statuses.length} posts
+            {getAllPosts().length} posts in conversation
           </span>
         </div>
 
@@ -240,54 +242,59 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
             </div>
           )}
 
-          {statuses.length === 0 && !isLoading && !error && (
+          {getAllPosts().length === 0 && !isLoading && !error && (
             <div style={{ 
               textAlign: 'center', 
               padding: '40px',
               color: '#808080'
             }}>
-              No posts found
+              No conversation found
             </div>
           )}
 
-          {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} />
+          {getAllPosts().map((status, index) => (
+            <div key={status.id} style={{ position: 'relative' }}>
+              {/* Highlight the original post */}
+              {isOriginalPost(status) && (
+                <div style={{
+                  position: 'absolute',
+                  left: '-4px',
+                  top: '0',
+                  bottom: '0',
+                  width: '4px',
+                  backgroundColor: '#0000ff',
+                  zIndex: 1
+                }} />
+              )}
+              
+              <div style={{
+                backgroundColor: isOriginalPost(status) ? '#f0f8ff' : 'transparent',
+                border: isOriginalPost(status) ? '1px solid #0000ff' : 'none',
+                borderRadius: isOriginalPost(status) ? '2px' : '0',
+                padding: isOriginalPost(status) ? '4px' : '0'
+              }}>
+                <PostComponent 
+                  status={status} 
+                  onImageClick={onImageClick} 
+                  onVideoClick={onVideoClick}
+                  onConversationClick={onConversationClick}
+                />
+              </div>
+              
+              {/* Thread line connector */}
+              {index < getAllPosts().length - 1 && (
+                <div style={{
+                  marginLeft: '20px',
+                  height: '8px',
+                  borderLeft: '2px solid #e0e0e0'
+                }} />
+              )}
+            </div>
           ))}
-
-          {/* Load more button */}
-          {hasMore && statuses.length > 0 && (
-            <div style={{ textAlign: 'center', marginTop: '16px' }}>
-              <button 
-                onClick={handleLoadMore}
-                disabled={isLoading}
-                style={{
-                  padding: '6px 20px',
-                  fontSize: '12px',
-                  border: '2px outset #c0c0c0',
-                  backgroundColor: '#c0c0c0',
-                  cursor: isLoading ? 'default' : 'pointer',
-                  opacity: isLoading ? 0.6 : 1
-                }}
-              >
-                {isLoading ? 'Loading...' : 'Load More'}
-              </button>
-            </div>
-          )}
-
-          {!hasMore && statuses.length > 0 && (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '20px',
-              color: '#808080',
-              fontSize: '11px'
-            }}>
-              End of timeline
-            </div>
-          )}
         </div>
       </div>
     </DesktopWindow>
   );
 };
 
-export default PublicTimelineWindow;
+export default ConversationWindow;

@@ -38,6 +38,7 @@ interface PostComponentProps {
   status: Status;
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
+  onConversationClick?: (statusId: string) => void;
 }
 
 const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> = ({ videoUrl, onVideoClick }) => {
@@ -89,7 +90,7 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -135,7 +136,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} />
       </div>
     );
   }
@@ -266,7 +267,13 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         <span style={{ color: status.favourited ? '#ff0000' : '#808080' }}>
           ⭐ {formatNumber(status.favourites_count)}
         </span>
-        <span style={{ marginLeft: 'auto' }}>
+        <span 
+          style={{ 
+            marginLeft: 'auto',
+            cursor: onConversationClick ? 'pointer' : 'default'
+          }}
+          onClick={() => onConversationClick && onConversationClick(status.id)}
+        >
           {status.visibility === 'public' ? '🌐' : 
            status.visibility === 'unlisted' ? '🔓' :
            status.visibility === 'private' ? '🔒' : '✉️'}

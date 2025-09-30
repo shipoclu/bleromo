@@ -6,7 +6,9 @@ import LoginWindow from './components/LoginWindow';
 import UserProfileWindow from './components/UserProfileWindow';
 import PublicTimelineWindow from './components/PublicTimelineWindow';
 import LocalTimelineWindow from './components/LocalTimelineWindow';
+import HomeTimelineWindow from './components/HomeTimelineWindow';
 import NotificationsWindow from './components/NotificationsWindow';
+import ConversationWindow from './components/ConversationWindow';
 import ImageViewerWindow from './components/ImageViewerWindow';
 import VideoViewerWindow from './components/VideoViewerWindow';
 
@@ -16,6 +18,8 @@ const App: React.FC = () => {
   const [imageWindowCounter, setImageWindowCounter] = useState(1);
   const [videoWindowData, setVideoWindowData] = useState<Record<string, { videoUrl: string; videoDescription?: string; windowNumber: number }>>({});
   const [videoWindowCounter, setVideoWindowCounter] = useState(1);
+  const [conversationWindowData, setConversationWindowData] = useState<Record<string, { statusId: string; windowNumber: number }>>({});
+  const [conversationWindowCounter, setConversationWindowCounter] = useState(1);
   
   const {
     windows,
@@ -95,6 +99,24 @@ const App: React.FC = () => {
         id: timelineWindowId,
         title: 'Local Timeline',
         icon: <LocalTimelineIcon />
+      });
+    }
+  };
+
+  const openHomeTimeline = () => {
+    const timelineWindowId = 'home-timeline';
+    const existingWindow = windows.find((win: any) => win.id === timelineWindowId);
+    
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: timelineWindowId });
+      }
+      focusWindow({ id: timelineWindowId });
+    } else {
+      addWindow({
+        id: timelineWindowId,
+        title: 'Home Timeline',
+        icon: <HomeTimelineIcon />
       });
     }
   };
@@ -205,6 +227,38 @@ const App: React.FC = () => {
     }
   };
 
+  const openConversation = (statusId: string) => {
+    const conversationWindowId = `conversation-${statusId}`;
+    const existingWindow = windows.find((win: any) => win.id === conversationWindowId);
+    
+    if (existingWindow) {
+      // Always ensure conversation data is stored
+      setConversationWindowData(prev => ({
+        ...prev,
+        [conversationWindowId]: { statusId, windowNumber: prev[conversationWindowId]?.windowNumber || conversationWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: conversationWindowId });
+      }
+      focusWindow({ id: conversationWindowId });
+    } else {
+      // Store conversation data with new window number
+      const windowNumber = conversationWindowCounter;
+      setConversationWindowData(prev => ({
+        ...prev,
+        [conversationWindowId]: { statusId, windowNumber }
+      }));
+      setConversationWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: conversationWindowId,
+        title: `Conversation ${windowNumber}`,
+        icon: <ConversationIcon />
+      });
+    }
+  };
+
   const LogoutIcon = () => (
     <img src="/users_key-4.png" alt="Logout" width="16" height="16" />
   );
@@ -221,6 +275,10 @@ const App: React.FC = () => {
     <img src="/directory_closed-0.png" alt="Local Timeline" width="16" height="16" />
   );
 
+  const HomeTimelineIcon = () => (
+    <img src="/directory_closed-0.png" alt="Home Timeline" width="16" height="16" />
+  );
+
   const ImageIcon = () => (
     <img src="/camera3-4.png" alt="Image" width="16" height="16" />
   );
@@ -231,6 +289,10 @@ const App: React.FC = () => {
 
   const NotificationIcon = () => (
     <img src="/file_lines-0.png" alt="Notifications" width="16" height="16" />
+  );
+
+  const ConversationIcon = () => (
+    <img src="/directory_closed-0.png" alt="Conversation" width="16" height="16" />
   );
 
   const StartIcon = () => (
@@ -255,6 +317,12 @@ const App: React.FC = () => {
     },
     {
       type: 'separator' as const
+    },
+    {
+      type: 'item' as const,
+      text: 'Home Timeline',
+      icon: <HomeTimelineIcon />,
+      onClick: openHomeTimeline
     },
     {
       type: 'item' as const,
@@ -351,6 +419,7 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onConversationClick={openConversation}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -372,6 +441,29 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onConversationClick={openConversation}
+              onClose={() => removeWindow(win.id)}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id === 'home-timeline') {
+          return (
+            <HomeTimelineWindow
+              key={win.id}
+              id={win.id}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onImageClick={openImageViewer}
+              onVideoClick={openVideoViewer}
+              onConversationClick={openConversation}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -393,7 +485,45 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onConversationClick={openConversation}
               onClose={() => removeWindow(win.id)}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('conversation-')) {
+          const conversationData = conversationWindowData[win.id];
+          if (!conversationData) {
+            // Skip rendering if we don't have conversation data
+            return null;
+          }
+          
+          return (
+            <ConversationWindow
+              key={win.id}
+              id={win.id}
+              statusId={conversationData.statusId}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onImageClick={openImageViewer}
+              onVideoClick={openVideoViewer}
+              onConversationClick={openConversation}
+              onClose={() => {
+                // Clean up conversation data when window is closed
+                setConversationWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}

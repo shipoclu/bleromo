@@ -45,12 +45,14 @@ interface NotificationComponentProps {
   notification: Notification;
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
+  onConversationClick?: (statusId: string) => void;
 }
 
 const NotificationComponent: React.FC<NotificationComponentProps> = ({ 
   notification, 
   onImageClick, 
-  onVideoClick 
+  onVideoClick,
+  onConversationClick
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -264,6 +266,26 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
               ))}
             </div>
           )}
+          
+          {/* Visibility icon for conversation click */}
+          <div style={{
+            textAlign: 'right',
+            marginTop: '8px',
+            paddingTop: '4px',
+            borderTop: '1px solid #e0e0e0'
+          }}>
+            <span 
+              style={{ 
+                cursor: onConversationClick ? 'pointer' : 'default',
+                fontSize: '14px'
+              }}
+              onClick={() => onConversationClick && onConversationClick(notification.status!.id)}
+            >
+              {notification.status!.visibility === 'public' ? '🌐' : 
+               notification.status!.visibility === 'unlisted' ? '🔓' :
+               notification.status!.visibility === 'private' ? '🔒' : '✉️'}
+            </span>
+          </div>
         </div>
       )}
     </div>
