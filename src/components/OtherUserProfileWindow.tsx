@@ -30,6 +30,7 @@ interface OtherUserProfileWindowProps {
   id: string;
   userId: string;
   onUserPostsTimelineClick?: (userId: string, userAcct: string) => void;
+  onMentionClick?: (userAcct: string) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -47,6 +48,7 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
   id,
   userId,
   onUserPostsTimelineClick,
+  onMentionClick,
   onClose,
   onFocus,
   onMinimize,
@@ -377,6 +379,20 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
                 }}
               >
                 View Posts
+              </button>
+              <button 
+                onClick={() => onMentionClick && userProfile && onMentionClick(userProfile.acct)}
+                disabled={!userProfile || !onMentionClick}
+                style={{
+                  padding: '6px 16px',
+                  fontSize: '12px',
+                  border: '2px outset #c0c0c0',
+                  backgroundColor: '#c0c0c0',
+                  cursor: (!userProfile || !onMentionClick) ? 'default' : 'pointer',
+                  opacity: (!userProfile || !onMentionClick) ? 0.6 : 1
+                }}
+              >
+                Mention
               </button>
               <button 
                 onClick={fetchUserProfile}

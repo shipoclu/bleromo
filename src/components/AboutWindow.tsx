@@ -78,10 +78,24 @@ const AboutWindow: React.FC<AboutWindowProps> = ({
         <div style={{
           fontSize: '10px',
           color: '#808080',
-          lineHeight: '1.2'
+          lineHeight: '1.4',
+          textAlign: 'center'
         }}>
           copyright moon.eth 1997<br />
-          do not distribute
+          <br />
+          Licensed under AGPL3<br />
+          <a 
+            href="https://git.shipoclu.com/moon/bleromofw" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              color: '#000080',
+              textDecoration: 'underline',
+              cursor: 'pointer'
+            }}
+          >
+            Source Code
+          </a>
         </div>
       </div>
     </DesktopWindow>

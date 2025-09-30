@@ -813,6 +813,7 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onUserPostsTimelineClick={openUserPostsTimeline}
+              onMentionClick={(userAcct: string) => openComposeWindow(undefined, [`@${userAcct}`])}
               onClose={() => {
                 // Clean up user profile data when window is closed
                 setUserProfileWindowData(prev => {
