@@ -3,6 +3,7 @@ import { DesktopWindow } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import NotificationComponent from './NotificationComponent';
+import { updatePostEngagementCounts } from '../utils/postUpdates';
 
 interface Account {
   id: string;
@@ -146,6 +147,17 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
         }
       }
 
+      // Update engagement counts for any statuses in notifications
+      const statusesFromNotifications = newNotifications
+        .filter(notification => notification.status)
+        .map(notification => notification.status!);
+      
+      if (statusesFromNotifications.length > 0) {
+        setTimeout(() => {
+          updatePostEngagementCounts(statusesFromNotifications, 'Notifications');
+        }, 100);
+      }
+
     } catch (err) {
       console.error('Error fetching notifications:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -252,12 +264,14 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
         </div>
 
         {/* Content area */}
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '8px',
-          backgroundColor: '#ffffff'
-        }}>
+        <div 
+          data-window-type="Notifications"
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '8px',
+            backgroundColor: '#ffffff'
+          }}>
           {error && (
             <div style={{ 
               color: '#800000', 

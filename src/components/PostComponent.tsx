@@ -112,14 +112,16 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   // If this is a boost/reblog, show the boost info and the original post
   if (status.reblog) {
     return (
-      <div style={{
-        padding: '8px',
-        border: '1px solid #808080',
-        backgroundColor: '#ffffff',
-        marginBottom: '8px',
-        fontFamily: 'MS Sans Serif, sans-serif',
-        fontSize: '12px'
-      }}>
+      <div 
+        data-post-id={status.id}
+        style={{
+          padding: '8px',
+          border: '1px solid #808080',
+          backgroundColor: '#ffffff',
+          marginBottom: '8px',
+          fontFamily: 'MS Sans Serif, sans-serif',
+          fontSize: '12px'
+        }}>
         {/* Boost header */}
         <div style={{
           display: 'flex',
@@ -143,14 +145,16 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
 
   // Regular post
   return (
-    <div style={{
-      padding: '8px',
-      border: '1px solid #808080',
-      backgroundColor: '#ffffff',
-      marginBottom: '8px',
-      fontFamily: 'MS Sans Serif, sans-serif',
-      fontSize: '12px'
-    }}>
+    <div 
+      data-post-id={status.id}
+      style={{
+        padding: '8px',
+        border: '1px solid #808080',
+        backgroundColor: '#ffffff',
+        marginBottom: '8px',
+        fontFamily: 'MS Sans Serif, sans-serif',
+        fontSize: '12px'
+      }}>
       {/* Header with avatar and user info */}
       <div style={{
         display: 'flex',
@@ -260,11 +264,17 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         borderTop: '1px solid #e0e0e0',
         paddingTop: '6px'
       }}>
-        <span>↩️ {formatNumber(status.replies_count)}</span>
-        <span style={{ color: status.reblogged ? '#008000' : '#808080' }}>
+        <span data-replies-count>↩️ {formatNumber(status.replies_count)}</span>
+        <span 
+          data-reblogs-count
+          style={{ color: status.reblogged ? '#008000' : '#808080' }}
+        >
           🔄 {formatNumber(status.reblogs_count)}
         </span>
-        <span style={{ color: status.favourited ? '#ff0000' : '#808080' }}>
+        <span 
+          data-favourites-count
+          style={{ color: status.favourited ? '#ff0000' : '#808080' }}
+        >
           ⭐ {formatNumber(status.favourites_count)}
         </span>
         <span 

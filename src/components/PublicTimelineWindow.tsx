@@ -3,6 +3,7 @@ import { DesktopWindow } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
+import { updatePostEngagementCounts } from '../utils/postUpdates';
 
 interface Status {
   id: string;
@@ -124,6 +125,11 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
         setHasMore(false);
       }
 
+      // Update engagement counts across all windows after a brief delay to ensure DOM is updated
+      setTimeout(() => {
+        updatePostEngagementCounts(newStatuses, 'Public Timeline');
+      }, 100);
+
     } catch (err) {
       console.error('Error fetching timeline:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -208,12 +214,14 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
         </div>
 
         {/* Content area */}
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '8px',
-          backgroundColor: '#ffffff'
-        }}>
+        <div 
+          data-window-type="Public Timeline"
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '8px',
+            backgroundColor: '#ffffff'
+          }}>
           {error && (
             <div style={{ 
               color: '#800000', 

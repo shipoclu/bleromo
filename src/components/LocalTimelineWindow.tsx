@@ -3,6 +3,7 @@ import { DesktopWindow } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
+import { updatePostEngagementCounts } from '../utils/postUpdates';
 
 interface Status {
   id: string;
@@ -125,6 +126,11 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
         setHasMore(false);
       }
 
+      // Update engagement counts across all windows after a brief delay to ensure DOM is updated
+      setTimeout(() => {
+        updatePostEngagementCounts(newStatuses, 'Local Timeline');
+      }, 100);
+
     } catch (err) {
       console.error('Error fetching local timeline:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -209,12 +215,14 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
         </div>
 
         {/* Content area */}
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '8px',
-          backgroundColor: '#ffffff'
-        }}>
+        <div 
+          data-window-type="Local Timeline"
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '8px',
+            backgroundColor: '#ffffff'
+          }}>
           {error && (
             <div style={{ 
               color: '#800000', 

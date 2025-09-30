@@ -3,6 +3,7 @@ import { DesktopWindow } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
+import { updatePostEngagementCounts } from '../utils/postUpdates';
 
 interface Account {
   id: string;
@@ -120,6 +121,12 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
       setOriginalStatus(status);
       setConversation(context);
 
+      // Update engagement counts for all posts in conversation
+      const allPosts = [status, ...context.ancestors, ...context.descendants];
+      setTimeout(() => {
+        updatePostEngagementCounts(allPosts, 'Conversation');
+      }, 100);
+
     } catch (err) {
       console.error('Error fetching conversation:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -210,12 +217,14 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
         </div>
 
         {/* Content area */}
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '8px',
-          backgroundColor: '#ffffff'
-        }}>
+        <div 
+          data-window-type="Conversation"
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '8px',
+            backgroundColor: '#ffffff'
+          }}>
           {error && (
             <div style={{ 
               color: '#800000', 
