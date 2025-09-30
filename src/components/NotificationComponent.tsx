@@ -54,6 +54,7 @@ interface NotificationComponentProps {
   notification: Notification;
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
+  onAudioClick?: (audioUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
@@ -63,6 +64,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   notification, 
   onImageClick, 
   onVideoClick,
+  onAudioClick,
   onConversationClick,
   onUserClick,
   onReplyClick
@@ -311,9 +313,20 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
                     <div style={{
                       padding: '10px',
                       textAlign: 'center',
-                      backgroundColor: '#f0f0f0'
-                    }}>
-                      <audio src={media.url} controls style={{ width: '100%', height: '30px' }} />
+                      backgroundColor: '#f0f0f0',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => onAudioClick && onAudioClick(media.url, media.description)}
+                    >
+                      <img 
+                        src="/volume_sheet-0.png" 
+                        alt="Audio attachment" 
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          opacity: 0.7
+                        }}
+                      />
                     </div>
                   )}
                 </div>

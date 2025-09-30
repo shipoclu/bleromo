@@ -70,6 +70,7 @@ interface HomeTimelineWindowProps {
   id: string;
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
+  onAudioClick?: (audioUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
@@ -90,6 +91,7 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
   id,
   onImageClick,
   onVideoClick,
+  onAudioClick,
   onConversationClick,
   onUserClick,
   onReplyClick,
@@ -417,7 +419,7 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
           ))}
 
           {/* Load more button */}

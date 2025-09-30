@@ -11,6 +11,7 @@ import NotificationsWindow from './components/NotificationsWindow';
 import ConversationWindow from './components/ConversationWindow';
 import ImageViewerWindow from './components/ImageViewerWindow';
 import VideoViewerWindow from './components/VideoViewerWindow';
+import AudioPlayerWindow from './components/AudioPlayerWindow';
 import OtherUserProfileWindow from './components/OtherUserProfileWindow';
 import UserPostsTimelineWindow from './components/UserPostsTimelineWindow';
 import PostCompositionWindow from './components/PostCompositionWindow';
@@ -22,6 +23,8 @@ const App: React.FC = () => {
   const [imageWindowCounter, setImageWindowCounter] = useState(1);
   const [videoWindowData, setVideoWindowData] = useState<Record<string, { videoUrl: string; videoDescription?: string; windowNumber: number }>>({});
   const [videoWindowCounter, setVideoWindowCounter] = useState(1);
+  const [audioWindowData, setAudioWindowData] = useState<Record<string, { audioUrl: string; audioDescription?: string; windowNumber: number }>>({});
+  const [audioWindowCounter, setAudioWindowCounter] = useState(1);
   const [conversationWindowData, setConversationWindowData] = useState<Record<string, { statusId: string; windowNumber: number }>>({});
   const [conversationWindowCounter, setConversationWindowCounter] = useState(1);
   const [userProfileWindowData, setUserProfileWindowData] = useState<Record<string, { userId: string; windowNumber: number }>>({});
@@ -371,6 +374,52 @@ const App: React.FC = () => {
     }
   };
 
+  const openAudioPlayer = (audioUrl: string, description?: string) => {
+    console.log('openAudioPlayer called with:', audioUrl, description);
+    // Create a unique ID based on hash of the audio URL
+    const createHash = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash).toString(16);
+    };
+    const audioWindowId = `audio-${createHash(audioUrl)}`;
+    console.log('Audio window ID:', audioWindowId);
+    const existingWindow = windows.find((win: any) => win.id === audioWindowId);
+    
+    if (existingWindow) {
+      console.log('Existing audio window found, focusing');
+      // Always ensure audio data is stored (in case it was cleaned up but window still exists)
+      setAudioWindowData(prev => ({
+        ...prev,
+        [audioWindowId]: { audioUrl, audioDescription: description, windowNumber: prev[audioWindowId]?.windowNumber || audioWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: audioWindowId });
+      }
+      focusWindow({ id: audioWindowId });
+    } else {
+      console.log('Creating new audio window');
+      // Store audio data with new window number
+      const windowNumber = audioWindowCounter;
+      setAudioWindowData(prev => ({
+        ...prev,
+        [audioWindowId]: { audioUrl, audioDescription: description, windowNumber }
+      }));
+      setAudioWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: audioWindowId,
+        title: `Audio Player ${windowNumber}`,
+        icon: <AudioIcon />
+      });
+    }
+  };
+
   const openConversation = (statusId: string) => {
     const conversationWindowId = `conversation-${statusId}`;
     const existingWindow = windows.find((win: any) => win.id === conversationWindowId);
@@ -429,6 +478,10 @@ const App: React.FC = () => {
 
   const VideoIcon = () => (
     <img src="/camera3-4.png" alt="Video" width="16" height="16" />
+  );
+
+  const AudioIcon = () => (
+    <img src="/volume_sheet-0.png" alt="Audio" width="16" height="16" />
   );
 
   const NotificationIcon = () => (
@@ -600,6 +653,7 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onAudioClick={openAudioPlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
@@ -624,6 +678,7 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onAudioClick={openAudioPlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
@@ -648,6 +703,7 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onAudioClick={openAudioPlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
@@ -672,6 +728,7 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onAudioClick={openAudioPlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
@@ -703,6 +760,7 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onAudioClick={openAudioPlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
@@ -796,6 +854,42 @@ const App: React.FC = () => {
             />
           );
         }
+        if (win.id.startsWith('audio-')) {
+          const audioData = audioWindowData[win.id];
+          if (!audioData) {
+            // Skip rendering if we don't have audio data
+            return null;
+          }
+          
+          return (
+            <AudioPlayerWindow
+              key={win.id}
+              id={win.id}
+              audioUrl={audioData.audioUrl}
+              audioDescription={audioData.audioDescription}
+              windowNumber={audioData.windowNumber}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                // Clean up audio data when window is closed
+                setAudioWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
         if (win.id.startsWith('user-profile-')) {
           const userProfileData = userProfileWindowData[win.id];
           if (!userProfileData) {
@@ -851,6 +945,7 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
+              onAudioClick={openAudioPlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}

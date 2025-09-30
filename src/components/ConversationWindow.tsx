@@ -76,6 +76,7 @@ interface ConversationWindowProps {
   statusId: string;
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
+  onAudioClick?: (audioUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
@@ -97,6 +98,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
   statusId,
   onImageClick,
   onVideoClick,
+  onAudioClick,
   onConversationClick,
   onUserClick,
   onReplyClick,
@@ -389,6 +391,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
                   status={status} 
                   onImageClick={onImageClick} 
                   onVideoClick={onVideoClick}
+                  onAudioClick={onAudioClick}
                   onConversationClick={onConversationClick}
                   onUserClick={onUserClick}
                   onReplyClick={onReplyClick}
