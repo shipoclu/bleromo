@@ -825,7 +825,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         <span 
           data-reblogs-count
           style={{ 
-            color: localStatus.reblogged ? '#ff0000' : '#808080',
+            color: localStatus.reblogged ? 'var(--win98-help-green)' : '#808080',
+            fontWeight: localStatus.reblogged ? 'bold' : 'normal',
             cursor: onReblogClick ? 'pointer' : 'default',
             opacity: isReblogging ? 0.5 : 1
           }}
@@ -836,7 +837,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         <span 
           data-favourites-count
           style={{ 
-            color: localStatus.favourited ? '#ff0000' : '#808080',
+            color: localStatus.favourited ? 'var(--win98-help-green)' : '#808080',
+            fontWeight: localStatus.favourited ? 'bold' : 'normal',
             cursor: onFavoriteClick ? 'pointer' : 'default',
             opacity: isFavoriting ? 0.5 : 1
           }}
@@ -894,7 +896,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
                   data-emoji-reaction={reaction.name}
                   style={{
                     cursor: onEmojiReactClick ? 'pointer' : 'default',
-                    color: reaction.me ? '#ff0000' : '#808080',
+                    color: reaction.me ? 'var(--win98-help-green)' : '#808080',
+                    fontWeight: reaction.me ? 'bold' : 'normal',
                     opacity: opacity,
                     fontSize: '11px',
                     display: 'inline-flex',

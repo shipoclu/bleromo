@@ -104,14 +104,16 @@ export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: st
       const reblogsElement = postElement.querySelector('[data-reblogs-count]') as HTMLElement;
       if (reblogsElement) {
         reblogsElement.textContent = `🔄 ${formatNumber(status.reblogs_count)}`;
-        reblogsElement.style.color = status.reblogged ? '#ff0000' : '#808080';
+        reblogsElement.style.color = status.reblogged ? 'var(--win98-help-green)' : '#808080';
+        reblogsElement.style.fontWeight = status.reblogged ? 'bold' : 'normal';
       }
 
       // Update favourites count and color
       const favouritesElement = postElement.querySelector('[data-favourites-count]') as HTMLElement;
       if (favouritesElement) {
         favouritesElement.textContent = `⭐ ${formatNumber(status.favourites_count)}`;
-        favouritesElement.style.color = status.favourited ? '#ff0000' : '#808080';
+        favouritesElement.style.color = status.favourited ? 'var(--win98-help-green)' : '#808080';
+        favouritesElement.style.fontWeight = status.favourited ? 'bold' : 'normal';
       }
 
       // Update emoji reactions - trigger a more comprehensive update by dispatching custom event
@@ -139,7 +141,8 @@ export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: st
               reactionElement.textContent = newText;
             }
             // Update the color based on reaction state
-            reactionElement.style.color = reaction.me ? '#ff0000' : '#808080';
+            reactionElement.style.color = reaction.me ? 'var(--win98-help-green)' : '#808080';
+            reactionElement.style.fontWeight = reaction.me ? 'bold' : 'normal';
           }
         });
       }
