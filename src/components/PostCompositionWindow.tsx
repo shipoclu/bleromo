@@ -12,6 +12,7 @@ interface ReplyToStatus {
   };
   content: string;
   created_at: string;
+  visibility: 'public' | 'unlisted' | 'private' | 'direct';
 }
 
 interface PostCompositionWindowProps {
@@ -56,6 +57,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | null>(null);
   const [loadingReplyInfo, setLoadingReplyInfo] = useState(false);
+  const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private' | 'direct'>('public');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch reply status information when replyToStatusId is provided
@@ -82,8 +84,20 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
             acct: status.account.acct
           },
           content: status.content,
-          created_at: status.created_at
+          created_at: status.created_at,
+          visibility: status.visibility
         });
+        
+        // Match the visibility of the post being replied to
+        if (status.visibility === 'direct') {
+          setVisibility('direct');
+        } else if (status.visibility === 'private') {
+          setVisibility('private');
+        } else if (status.visibility === 'unlisted') {
+          setVisibility('unlisted');
+        } else {
+          setVisibility('public');
+        }
       })
       .catch(error => {
         console.error('Error fetching reply status:', error);
@@ -165,7 +179,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
       // Now create the status
       const statusData: any = {
         status: postBody.trim(),
-        visibility: 'public'
+        visibility: visibility
       };
 
       if (summary.trim()) {
@@ -212,6 +226,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
       setPostBody('');
       setAttachments([]);
       setSensitiveMedia(false);
+      setVisibility('public');
       onClose();
 
     } catch (err) {
@@ -444,6 +459,59 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
               <label htmlFor="sensitive-media-checkbox">
                 Mark media as sensitive
               </label>
+            </div>
+          )}
+        </div>
+
+        {/* Visibility Selector */}
+        <div>
+          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+            Post Visibility:
+          </label>
+          <select
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value as 'public' | 'unlisted' | 'private' | 'direct')}
+            disabled={replyToStatus?.visibility === 'direct'}
+            style={{
+              padding: '4px 8px',
+              border: '2px inset #c0c0c0',
+              fontSize: '12px',
+              fontFamily: 'MS Sans Serif, sans-serif',
+              backgroundColor: replyToStatus?.visibility === 'direct' ? '#f0f0f0' : 'white',
+              color: 'black',
+              cursor: replyToStatus?.visibility === 'direct' ? 'not-allowed' : 'pointer',
+              height: '25px',
+              width: '200px',
+              lineHeight: '16px'
+            }}
+          >
+            <option value="public">🌐 Public</option>
+            <option value="unlisted">🔓 Unlisted</option>
+            <option value="private">🔒 Followers only</option>
+            <option value="direct">✉️ Direct</option>
+          </select>
+          {replyToStatus?.visibility === 'direct' && (
+            <div style={{ 
+              fontSize: '11px', 
+              color: '#808080', 
+              marginTop: '2px',
+              fontStyle: 'italic'
+            }}>
+              Visibility locked to Direct when replying to a direct message
+            </div>
+          )}
+          {replyToStatus && replyToStatus.visibility !== 'direct' && (
+            <div style={{ 
+              fontSize: '11px', 
+              color: '#808080', 
+              marginTop: '2px',
+              fontStyle: 'italic'
+            }}>
+              Default visibility set to match original post ({
+                replyToStatus.visibility === 'private' ? 'Followers only' :
+                replyToStatus.visibility === 'unlisted' ? 'Unlisted' :
+                'Public'
+              })
             </div>
           )}
         </div>
