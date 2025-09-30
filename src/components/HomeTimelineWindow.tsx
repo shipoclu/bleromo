@@ -71,9 +71,11 @@ interface HomeTimelineWindowProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onAudioClick?: (audioUrl: string, description?: string) => void;
+  onYouTubeClick?: (videoId: string, videoUrl: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
+  onEmojiPickerClick?: (statusId: string) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -92,9 +94,11 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
   onImageClick,
   onVideoClick,
   onAudioClick,
+  onYouTubeClick,
   onConversationClick,
   onUserClick,
   onReplyClick,
+  onEmojiPickerClick,
   onClose,
   onFocus,
   onMinimize,
@@ -419,7 +423,7 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
           ))}
 
           {/* Load more button */}

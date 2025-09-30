@@ -12,6 +12,8 @@ import ConversationWindow from './components/ConversationWindow';
 import ImageViewerWindow from './components/ImageViewerWindow';
 import VideoViewerWindow from './components/VideoViewerWindow';
 import AudioPlayerWindow from './components/AudioPlayerWindow';
+import YouTubePlayerWindow from './components/YouTubePlayerWindow';
+import EmojiReactPickerWindow from './components/EmojiReactPickerWindow';
 import OtherUserProfileWindow from './components/OtherUserProfileWindow';
 import UserPostsTimelineWindow from './components/UserPostsTimelineWindow';
 import PostCompositionWindow from './components/PostCompositionWindow';
@@ -25,6 +27,8 @@ const App: React.FC = () => {
   const [videoWindowCounter, setVideoWindowCounter] = useState(1);
   const [audioWindowData, setAudioWindowData] = useState<Record<string, { audioUrl: string; audioDescription?: string; windowNumber: number }>>({});
   const [audioWindowCounter, setAudioWindowCounter] = useState(1);
+  const [youtubeWindowData, setYoutubeWindowData] = useState<Record<string, { videoId: string; videoUrl: string; windowNumber: number }>>({});
+  const [youtubeWindowCounter, setYoutubeWindowCounter] = useState(1);
   const [conversationWindowData, setConversationWindowData] = useState<Record<string, { statusId: string; windowNumber: number }>>({});
   const [conversationWindowCounter, setConversationWindowCounter] = useState(1);
   const [userProfileWindowData, setUserProfileWindowData] = useState<Record<string, { userId: string; windowNumber: number }>>({});
@@ -33,6 +37,7 @@ const App: React.FC = () => {
   const [userPostsTimelineWindowCounter, setUserPostsTimelineWindowCounter] = useState(1);
   const [composeWindowData, setComposeWindowData] = useState<Record<string, { replyToStatusId?: string; mentionHandles?: string[]; windowNumber: number }>>({});
   const [composeWindowCounter, setComposeWindowCounter] = useState(1);
+  const [emojiPickerStatusId, setEmojiPickerStatusId] = useState<string | null>(null);
   
   const {
     windows,
@@ -420,6 +425,86 @@ const App: React.FC = () => {
     }
   };
 
+  const openYouTubePlayer = (videoId: string, videoUrl: string) => {
+    console.log('openYouTubePlayer called with:', videoId, videoUrl);
+    const youtubeWindowId = `youtube-${videoId}`;
+    console.log('YouTube window ID:', youtubeWindowId);
+    const existingWindow = windows.find((win: any) => win.id === youtubeWindowId);
+    
+    if (existingWindow) {
+      console.log('Existing YouTube window found, focusing');
+      // Always ensure YouTube data is stored (in case it was cleaned up but window still exists)
+      setYoutubeWindowData(prev => ({
+        ...prev,
+        [youtubeWindowId]: { videoId, videoUrl, windowNumber: prev[youtubeWindowId]?.windowNumber || youtubeWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: youtubeWindowId });
+      }
+      focusWindow({ id: youtubeWindowId });
+    } else {
+      console.log('Creating new YouTube window');
+      // Store YouTube data with new window number
+      const windowNumber = youtubeWindowCounter;
+      setYoutubeWindowData(prev => ({
+        ...prev,
+        [youtubeWindowId]: { videoId, videoUrl, windowNumber }
+      }));
+      setYoutubeWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: youtubeWindowId,
+        title: `YouTube Player ${windowNumber}`,
+        icon: <YouTubeIcon />
+      });
+    }
+  };
+
+  const openEmojiPicker = (statusId: string) => {
+    const emojiPickerWindowId = 'emoji-picker';
+    const existingWindow = windows.find((win: any) => win.id === emojiPickerWindowId);
+    
+    if (existingWindow) {
+      // If window exists but for different status, update the status
+      setEmojiPickerStatusId(statusId);
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: emojiPickerWindowId });
+      }
+      focusWindow({ id: emojiPickerWindowId });
+    } else {
+      // Create new emoji picker window
+      setEmojiPickerStatusId(statusId);
+      
+      addWindow({
+        id: emojiPickerWindowId,
+        title: 'Emoji React',
+        icon: <span>❤️</span>
+      });
+    }
+  };
+
+  const handleEmojiReact = async (statusId: string, emojiName: string, currentlyReacted: boolean): Promise<any> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await fetch(`${snap.serverUrl}/api/v1/pleroma/statuses/${statusId}/reactions/${encodeURIComponent(emojiName)}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to react with ${emojiName}: ${response.status}`);
+    }
+
+    return await response.json();
+  };
+
   const openConversation = (statusId: string) => {
     const conversationWindowId = `conversation-${statusId}`;
     const existingWindow = windows.find((win: any) => win.id === conversationWindowId);
@@ -482,6 +567,10 @@ const App: React.FC = () => {
 
   const AudioIcon = () => (
     <img src="/volume_sheet-0.png" alt="Audio" width="16" height="16" />
+  );
+
+  const YouTubeIcon = () => (
+    <img src="/camera3-4.png" alt="YouTube" width="16" height="16" />
   );
 
   const NotificationIcon = () => (
@@ -654,9 +743,11 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onAudioClick={openAudioPlayer}
+              onYouTubeClick={openYouTubePlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
+              onEmojiPickerClick={openEmojiPicker}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -679,9 +770,11 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onAudioClick={openAudioPlayer}
+              onYouTubeClick={openYouTubePlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
+              onEmojiPickerClick={openEmojiPicker}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -704,9 +797,11 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onAudioClick={openAudioPlayer}
+              onYouTubeClick={openYouTubePlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
+              onEmojiPickerClick={openEmojiPicker}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -729,9 +824,11 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onAudioClick={openAudioPlayer}
+              onYouTubeClick={openYouTubePlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
+              onEmojiPickerClick={openEmojiPicker}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -761,9 +858,11 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onAudioClick={openAudioPlayer}
+              onYouTubeClick={openYouTubePlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
+              onEmojiPickerClick={openEmojiPicker}
               onClose={() => {
                 // Clean up conversation data when window is closed
                 setConversationWindowData(prev => {
@@ -890,6 +989,73 @@ const App: React.FC = () => {
             />
           );
         }
+        if (win.id.startsWith('youtube-')) {
+          const youtubeData = youtubeWindowData[win.id];
+          if (!youtubeData) {
+            // Skip rendering if we don't have YouTube data
+            return null;
+          }
+          
+          return (
+            <YouTubePlayerWindow
+              key={win.id}
+              id={win.id}
+              videoId={youtubeData.videoId}
+              videoUrl={youtubeData.videoUrl}
+              windowNumber={youtubeData.windowNumber}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                // Clean up YouTube data when window is closed
+                setYoutubeWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id === 'emoji-picker') {
+          if (!emojiPickerStatusId) {
+            // Skip rendering if we don't have status ID
+            return null;
+          }
+          
+          return (
+            <EmojiReactPickerWindow
+              key={win.id}
+              id={win.id}
+              statusId={emojiPickerStatusId}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onEmojiReact={handleEmojiReact}
+              onClose={() => {
+                // Clean up emoji picker state when window is closed
+                setEmojiPickerStatusId(null);
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
         if (win.id.startsWith('user-profile-')) {
           const userProfileData = userProfileWindowData[win.id];
           if (!userProfileData) {
@@ -946,9 +1112,11 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onAudioClick={openAudioPlayer}
+              onYouTubeClick={openYouTubePlayer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
+              onEmojiPickerClick={openEmojiPicker}
               onClose={() => {
                 // Clean up user posts timeline data when window is closed
                 setUserPostsTimelineWindowData(prev => {

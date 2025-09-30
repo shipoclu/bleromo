@@ -68,12 +68,14 @@ interface PostComponentProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onAudioClick?: (audioUrl: string, description?: string) => void;
+  onYouTubeClick?: (videoId: string, videoUrl: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onFavoriteClick?: (statusId: string, currentlyFavorited: boolean) => Promise<{ favourited: boolean; favourites_count: number }>;
   onReblogClick?: (statusId: string, currentlyReblogged: boolean) => Promise<{ reblogged: boolean; reblogs_count: number }>;
   onEmojiReactClick?: (statusId: string, emojiName: string, currentlyReacted: boolean) => Promise<EmojiReaction[]>;
+  onEmojiPickerClick?: (statusId: string) => void;
 }
 
 const SensitiveMediaOverlay: React.FC<{ onClick: () => void }> = ({ onClick }) => {
@@ -156,7 +158,7 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onAudioClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick, onEmojiReactClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onAudioClick, onYouTubeClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick, onEmojiReactClick, onEmojiPickerClick }) => {
   const [localStatus, setLocalStatus] = useState(status);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isReblogging, setIsReblogging] = useState(false);
@@ -167,6 +169,32 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   useEffect(() => {
     setLocalStatus(status);
   }, [status]);
+
+  // Listen for emoji reaction updates from the engagement count system
+  useEffect(() => {
+    const handleEmojiUpdate = (event: CustomEvent) => {
+      const { statusId, reactions } = event.detail;
+      if (statusId === localStatus.id) {
+        console.log('🎨 Received emoji update event for status:', statusId, reactions);
+        setLocalStatus(prev => ({
+          ...prev,
+          emoji_reactions: reactions,
+          pleroma: {
+            ...prev.pleroma,
+            emoji_reactions: reactions
+          }
+        }));
+      }
+    };
+
+    const postElement = document.querySelector(`[data-post-id="${localStatus.id}"]`);
+    if (postElement) {
+      postElement.addEventListener('emojiReactionsUpdate', handleEmojiUpdate as EventListener);
+      return () => {
+        postElement.removeEventListener('emojiReactionsUpdate', handleEmojiUpdate as EventListener);
+      };
+    }
+  }, [localStatus.id]);
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -178,16 +206,31 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     return div.textContent || div.innerText || '';
   }, []);
 
-  const processPostContentToElements = useCallback((content: string, emojis?: CustomEmoji[], mentions?: Array<{id: string; username: string; acct: string; url: string}>, onUserClick?: (userId: string) => void): React.ReactNode[] => {
+  const extractYouTubeVideoId = useCallback((url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        return match[1];
+      }
+    }
+    return null;
+  }, []);
+
+  const processPostContentToElements = useCallback((content: string, emojis?: CustomEmoji[], mentions?: Array<{id: string; username: string; acct: string; url: string}>, onUserClick?: (userId: string) => void, onYouTubeClick?: (videoId: string, videoUrl: string) => void): React.ReactNode[] => {
     let processedContent = stripHtml(content);
     const parts: React.ReactNode[] = [];
     
-    // Create a map of all patterns (emoji and mentions) and their positions
+    // Create a map of all patterns (emoji, mentions, and URLs) and their positions
     const matches: Array<{ 
       index: number; 
       length: number; 
-      type: 'emoji' | 'mention'; 
-      data: CustomEmoji | {id: string; username: string; acct: string; url: string}; 
+      type: 'emoji' | 'mention' | 'url' | 'youtube'; 
+      data: CustomEmoji | {id: string; username: string; acct: string; url: string} | string; 
       matchIndex: number 
     }> = [];
     
@@ -251,6 +294,35 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
       });
     }
     
+    // Find URL patterns - exclude emoji and other unicode characters that should end URLs
+    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]+)/gu;
+    let urlMatch;
+    
+    while ((urlMatch = urlPattern.exec(processedContent)) !== null) {
+      const url = urlMatch[1];
+      const videoId = extractYouTubeVideoId(url);
+      
+      if (videoId) {
+        // This is a YouTube URL
+        matches.push({
+          index: urlMatch.index,
+          length: urlMatch[0].length,
+          type: 'youtube',
+          data: url,
+          matchIndex: 30000 + urlMatch.index // unique key for YouTube URLs
+        });
+      } else {
+        // This is a regular URL
+        matches.push({
+          index: urlMatch.index,
+          length: urlMatch[0].length,
+          type: 'url',
+          data: url,
+          matchIndex: 40000 + urlMatch.index // unique key for regular URLs
+        });
+      }
+    }
+    
     // Sort matches by position
     matches.sort((a, b) => a.index - b.index);
     
@@ -307,6 +379,47 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
             {fullMention}
           </span>
         );
+      } else if (match.type === 'youtube') {
+        // Add YouTube URL as clickable red link
+        const url = match.data as string;
+        const videoId = extractYouTubeVideoId(url);
+        
+        parts.push(
+          <span
+            key={`youtube-${match.matchIndex}`}
+            style={{
+              color: '#ff0000',
+              textDecoration: 'underline',
+              cursor: 'pointer'
+            }}
+            onClick={() => {
+              if (onYouTubeClick && videoId) {
+                onYouTubeClick(videoId, url);
+              }
+            }}
+            title={`Open YouTube video: ${url}`}
+          >
+            {url}
+          </span>
+        );
+      } else if (match.type === 'url') {
+        // Add regular URL as clickable blue link
+        const url = match.data as string;
+        
+        parts.push(
+          <a
+            key={`url-${match.matchIndex}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#0000ff',
+              textDecoration: 'underline'
+            }}
+          >
+            {url}
+          </a>
+        );
       }
       
       lastIndex = match.index + match.length;
@@ -321,23 +434,23 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     }
     
     return parts.length > 0 ? parts : [processedContent];
-  }, [stripHtml]);
+  }, [stripHtml, extractYouTubeVideoId]);
 
   // Memoize processed content to avoid re-processing during re-renders
   const processedDisplayName = useMemo(() => {
-    return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick);
-  }, [localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick]);
+    return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick, onYouTubeClick);
+  }, [localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick, onYouTubeClick]);
 
   const processedContent = useMemo(() => {
-    return processPostContentToElements(localStatus.content, localStatus.emojis, localStatus.mentions, onUserClick);
-  }, [localStatus.content, localStatus.emojis, localStatus.mentions, processPostContentToElements, onUserClick]);
+    return processPostContentToElements(localStatus.content, localStatus.emojis, localStatus.mentions, onUserClick, onYouTubeClick);
+  }, [localStatus.content, localStatus.emojis, localStatus.mentions, processPostContentToElements, onUserClick, onYouTubeClick]);
 
   const processedReblogDisplayName = useMemo(() => {
     if (localStatus.reblog) {
-      return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick);
+      return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick, onYouTubeClick);
     }
     return [];
-  }, [localStatus.reblog, localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick]);
+  }, [localStatus.reblog, localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick, onYouTubeClick]);
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -516,7 +629,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={onFavoriteClick} onReblogClick={onReblogClick} onEmojiReactClick={onEmojiReactClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} onFavoriteClick={onFavoriteClick} onReblogClick={onReblogClick} onEmojiReactClick={onEmojiReactClick} />
       </div>
     );
   }
@@ -693,6 +806,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
       {/* Interaction stats */}
       <div style={{
         display: 'flex',
+        alignItems: 'center',
         gap: '16px',
         fontSize: '11px',
         color: '#808080',
@@ -730,6 +844,32 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         >
           ⭐ {formatNumber(localStatus.favourites_count)}
         </span>
+
+        {/* Emoji React Picker Button */}
+        {onEmojiPickerClick && (
+          <button
+            onClick={() => onEmojiPickerClick(localStatus.id)}
+            title="Add emoji reaction"
+            style={{
+              marginLeft: '8px',
+              padding: '2px 4px',
+              fontSize: '10px',
+              border: '2px outset #c0c0c0',
+              backgroundColor: '#c0c0c0',
+              cursor: 'pointer',
+              fontFamily: 'MS Sans Serif, sans-serif',
+              minWidth: 'auto',
+              width: 'auto',
+              lineHeight: '1',
+              verticalAlign: 'middle'
+            }}
+            onMouseDown={(e) => e.currentTarget.style.border = '2px inset #c0c0c0'}
+            onMouseUp={(e) => e.currentTarget.style.border = '2px outset #c0c0c0'}
+            onMouseLeave={(e) => e.currentTarget.style.border = '2px outset #c0c0c0'}
+          >
+            ⁂
+          </button>
+        )}
         
         {/* Emoji Reactions */}
         {(() => {

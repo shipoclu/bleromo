@@ -114,8 +114,19 @@ export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: st
         favouritesElement.style.color = status.favourited ? '#ff0000' : '#808080';
       }
 
-      // Update emoji reactions
+      // Update emoji reactions - trigger a more comprehensive update by dispatching custom event
       const reactions = getEmojiReactions(status);
+      
+      // Dispatch a custom event that PostComponent can listen to for emoji reaction updates
+      const emojiUpdateEvent = new CustomEvent('emojiReactionsUpdate', {
+        detail: {
+          statusId: status.id,
+          reactions: reactions
+        }
+      });
+      postElement.dispatchEvent(emojiUpdateEvent);
+      
+      // Also update existing reaction elements for backward compatibility
       if (reactions.length > 0) {
         reactions.forEach(reaction => {
           const reactionElement = postElement.querySelector(`[data-emoji-reaction="${reaction.name}"]`) as HTMLElement;
