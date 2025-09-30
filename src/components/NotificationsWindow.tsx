@@ -21,6 +21,7 @@ interface Status {
   content: string;
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
+  sensitive: boolean;
   media_attachments: Array<{
     id: string;
     type: 'image' | 'video' | 'audio' | 'unknown';
@@ -52,6 +53,7 @@ interface NotificationsWindowProps {
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
+  onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -71,6 +73,7 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
   onVideoClick,
   onConversationClick,
   onUserClick,
+  onReplyClick,
   onClose,
   onFocus,
   onMinimize,
@@ -318,6 +321,7 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
               onVideoClick={onVideoClick}
               onConversationClick={onConversationClick}
               onUserClick={onUserClick}
+              onReplyClick={onReplyClick}
             />
           ))}
 

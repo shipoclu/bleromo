@@ -85,10 +85,6 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
     return new Intl.NumberFormat().format(num);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
   const stripHtml = (html: string) => {
     const div = document.createElement('div');
     div.innerHTML = html;

@@ -22,7 +22,7 @@ interface VideoViewerWindowProps {
 const VideoViewerWindow: React.FC<VideoViewerWindowProps> = ({
   id,
   videoUrl,
-  videoDescription,
+  videoDescription: _videoDescription,
   windowNumber,
   onClose,
   onFocus,

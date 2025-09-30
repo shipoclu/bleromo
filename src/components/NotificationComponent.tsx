@@ -47,6 +47,7 @@ interface NotificationComponentProps {
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
+  onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
 }
 
 const NotificationComponent: React.FC<NotificationComponentProps> = ({ 
@@ -54,7 +55,8 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   onImageClick, 
   onVideoClick,
   onConversationClick,
-  onUserClick
+  onUserClick,
+  onReplyClick
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -277,17 +279,35 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
             </div>
           )}
           
-          {/* Visibility icon for conversation click */}
+          {/* Action buttons */}
           <div style={{
-            textAlign: 'right',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             marginTop: '8px',
             paddingTop: '4px',
             borderTop: '1px solid #e0e0e0'
           }}>
+            {/* Reply emoji for mentions only */}
+            {notification.type === 'mention' && onReplyClick && (
+              <span
+                style={{
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => onReplyClick(notification.status!.id, [`@${notification.account.acct}`])}
+                title="Reply to mention"
+              >
+                ↩️
+              </span>
+            )}
+            
+            {/* Visibility icon for conversation click */}
             <span 
               style={{ 
                 cursor: onConversationClick ? 'pointer' : 'default',
-                fontSize: '14px'
+                fontSize: '14px',
+                marginLeft: 'auto'
               }}
               onClick={() => onConversationClick && onConversationClick(notification.status!.id)}
             >

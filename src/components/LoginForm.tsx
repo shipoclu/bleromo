@@ -163,7 +163,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
 
     } catch (error) {
       console.error('OAuth setup failed:', error);
-      failLogin(`Failed to register app with server: ${error.message}`);
+      failLogin(`Failed to register app with server: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setIsLoading(false);
     }
   };
