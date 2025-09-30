@@ -21,6 +21,7 @@ interface UserData {
 interface OtherUserProfileWindowProps {
   id: string;
   userId: string;
+  onUserPostsTimelineClick?: (userId: string, userAcct: string) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -37,6 +38,7 @@ interface OtherUserProfileWindowProps {
 const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
   id,
   userId,
+  onUserPostsTimelineClick,
   onClose,
   onFocus,
   onMinimize,
@@ -320,13 +322,32 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
               </div>
             )}
 
-            {/* Refresh button */}
-            <div style={{ textAlign: 'center' }}>
+            {/* Action buttons */}
+            <div style={{ 
+              textAlign: 'center',
+              display: 'flex',
+              gap: '8px',
+              justifyContent: 'center'
+            }}>
+              <button 
+                onClick={() => onUserPostsTimelineClick && userProfile && onUserPostsTimelineClick(userProfile.id, userProfile.acct)}
+                disabled={!userProfile || !onUserPostsTimelineClick}
+                style={{
+                  padding: '6px 16px',
+                  fontSize: '12px',
+                  border: '2px outset #c0c0c0',
+                  backgroundColor: '#c0c0c0',
+                  cursor: (!userProfile || !onUserPostsTimelineClick) ? 'default' : 'pointer',
+                  opacity: (!userProfile || !onUserPostsTimelineClick) ? 0.6 : 1
+                }}
+              >
+                View Posts
+              </button>
               <button 
                 onClick={fetchUserProfile}
                 disabled={isLoading}
                 style={{
-                  padding: '6px 20px',
+                  padding: '6px 16px',
                   fontSize: '12px',
                   border: '2px outset #c0c0c0',
                   backgroundColor: '#c0c0c0',

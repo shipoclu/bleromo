@@ -12,6 +12,7 @@ import ConversationWindow from './components/ConversationWindow';
 import ImageViewerWindow from './components/ImageViewerWindow';
 import VideoViewerWindow from './components/VideoViewerWindow';
 import OtherUserProfileWindow from './components/OtherUserProfileWindow';
+import UserPostsTimelineWindow from './components/UserPostsTimelineWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -23,6 +24,8 @@ const App: React.FC = () => {
   const [conversationWindowCounter, setConversationWindowCounter] = useState(1);
   const [userProfileWindowData, setUserProfileWindowData] = useState<Record<string, { userId: string; windowNumber: number }>>({});
   const [userProfileWindowCounter, setUserProfileWindowCounter] = useState(1);
+  const [userPostsTimelineWindowData, setUserPostsTimelineWindowData] = useState<Record<string, { userId: string; userAcct: string; windowNumber: number }>>({});
+  const [userPostsTimelineWindowCounter, setUserPostsTimelineWindowCounter] = useState(1);
   
   const {
     windows,
@@ -98,6 +101,54 @@ const App: React.FC = () => {
         id: userProfileWindowId,
         title: `User Profile ${windowNumber}`,
         icon: <UserIcon />
+      });
+    }
+  };
+
+  const openUserPostsTimeline = (userId: string, userAcct: string) => {
+    // Create a unique ID based on hash of the userAcct + " posts"
+    const createHash = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash).toString(16);
+    };
+    const userPostsTimelineWindowId = `user-posts-${createHash(userAcct + ' posts')}`;
+    const existingWindow = windows.find((win: any) => win.id === userPostsTimelineWindowId);
+    
+    if (existingWindow) {
+      // Always ensure user posts timeline data is stored
+      setUserPostsTimelineWindowData(prev => ({
+        ...prev,
+        [userPostsTimelineWindowId]: { userId, userAcct, windowNumber: prev[userPostsTimelineWindowId]?.windowNumber || userPostsTimelineWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: userPostsTimelineWindowId });
+      }
+      focusWindow({ id: userPostsTimelineWindowId });
+    } else {
+      // Store user posts timeline data with new window number
+      const windowNumber = userPostsTimelineWindowCounter;
+      setUserPostsTimelineWindowData(prev => ({
+        ...prev,
+        [userPostsTimelineWindowId]: { userId, userAcct, windowNumber }
+      }));
+      setUserPostsTimelineWindowCounter(prev => prev + 1);
+      
+      // Create title for window (truncated if too long)
+      let title = `@${userAcct} posts`;
+      if (title.length > 20) {
+        title = title.substring(0, 17) + '...';
+      }
+      
+      addWindow({
+        id: userPostsTimelineWindowId,
+        title: title,
+        icon: <TimelineIcon />
       });
     }
   };
@@ -661,9 +712,49 @@ const App: React.FC = () => {
               isMinimized={win.isMinimized}
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
+              onUserPostsTimelineClick={openUserPostsTimeline}
               onClose={() => {
                 // Clean up user profile data when window is closed
                 setUserProfileWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('user-posts-')) {
+          const userPostsTimelineData = userPostsTimelineWindowData[win.id];
+          if (!userPostsTimelineData) {
+            // Skip rendering if we don't have user posts timeline data
+            return null;
+          }
+          
+          return (
+            <UserPostsTimelineWindow
+              key={win.id}
+              id={win.id}
+              userId={userPostsTimelineData.userId}
+              userAcct={userPostsTimelineData.userAcct}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onImageClick={openImageViewer}
+              onVideoClick={openVideoViewer}
+              onConversationClick={openConversation}
+              onUserClick={openUserProfile}
+              onClose={() => {
+                // Clean up user posts timeline data when window is closed
+                setUserPostsTimelineWindowData(prev => {
                   const { [win.id]: removed, ...rest } = prev;
                   return rest;
                 });
