@@ -435,12 +435,13 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
           
           {attachments.length > 0 && (
             <div style={{ marginTop: '4px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <input
-                  type="checkbox"
-                  checked={sensitiveMedia}
-                  onChange={(e) => setSensitiveMedia(e.target.checked)}
-                />
+              <input
+                id="sensitive-media-checkbox"
+                type="checkbox"
+                checked={sensitiveMedia}
+                onChange={(e) => setSensitiveMedia(e.target.checked)}
+              />
+              <label htmlFor="sensitive-media-checkbox">
                 Mark media as sensitive
               </label>
             </div>
