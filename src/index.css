@@ -1,3 +1,8 @@
+/* CSS Reset for wtkrjs compatibility */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   padding: 0;

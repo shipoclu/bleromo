@@ -12,7 +12,6 @@ const App: React.FC = () => {
   const snap = useSnapshot(appState);
   const [imageWindowData, setImageWindowData] = useState<Record<string, { imageUrl: string; imageDescription?: string; windowNumber: number }>>({});
   const [imageWindowCounter, setImageWindowCounter] = useState(1);
-  const [closedWindows, setClosedWindows] = useState<Set<string>>(new Set());
   
   const {
     windows,
@@ -262,11 +261,6 @@ const App: React.FC = () => {
       flexDirection: 'column'
     }}>
       {windows.map((win: any) => {
-        // Skip closed windows
-        if (closedWindows.has(win.id)) {
-          return null;
-        }
-        
         if (win.id === 'user-profile') {
           return (
             <UserProfileWindow
@@ -276,11 +270,7 @@ const App: React.FC = () => {
               isMinimized={win.isMinimized}
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
-              onClose={() => {
-                console.log('Closing window:', win.id);
-                setClosedWindows(prev => new Set([...prev, win.id]));
-                console.log('Window closed:', win.id);
-              }}
+              onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
@@ -300,11 +290,7 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
-              onClose={() => {
-                console.log('Closing window:', win.id);
-                setClosedWindows(prev => new Set([...prev, win.id]));
-                console.log('Window closed:', win.id);
-              }}
+              onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
@@ -324,11 +310,7 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
-              onClose={() => {
-                console.log('Closing window:', win.id);
-                setClosedWindows(prev => new Set([...prev, win.id]));
-                console.log('Window closed:', win.id);
-              }}
+              onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
@@ -357,15 +339,13 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onClose={() => {
-                console.log('Closing image window:', win.id);
-                // Add to closed windows set
-                setClosedWindows(prev => new Set([...prev, win.id]));
-                // Clean up image data
+                // Clean up image data when window is closed
                 setImageWindowData(prev => {
                   const { [win.id]: removed, ...rest } = prev;
                   return rest;
                 });
-                console.log('Image window closed:', win.id);
+                // Remove window from window manager
+                removeWindow(win.id);
               }}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
