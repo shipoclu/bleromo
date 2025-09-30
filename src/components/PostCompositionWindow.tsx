@@ -113,13 +113,17 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
     if (mentionHandles && mentionHandles.length > 0 && snap.userData) {
       // Filter out the current user's handle
       const filteredHandles = mentionHandles.filter(handle => {
-        // Compare both username and acct formats
+        // Remove @ symbol if present for comparison
+        const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
         const currentUserHandle = snap.userData!.acct || snap.userData!.username;
-        return handle !== currentUserHandle && handle !== snap.userData!.username;
+        return cleanHandle !== currentUserHandle && cleanHandle !== snap.userData!.username;
       });
       
       if (filteredHandles.length > 0) {
-        const mentions = filteredHandles.map(handle => `@${handle}`).join(' ');
+        // Ensure handles have @ prefix, but don't double-add it
+        const mentions = filteredHandles.map(handle => 
+          handle.startsWith('@') ? handle : `@${handle}`
+        ).join(' ');
         setPostBody(mentions + ' ');
       }
     }
