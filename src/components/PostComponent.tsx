@@ -293,7 +293,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
             key={`mention-${match.matchIndex}`}
             style={{
               color: 'var(--win98-help-green)',
-              textDecoration: onUserClick ? 'underline' : 'none',
+              textDecoration: 'none',
               cursor: onUserClick ? 'pointer' : 'default'
             }}
             onClick={() => {
