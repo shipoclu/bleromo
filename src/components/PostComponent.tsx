@@ -47,6 +47,7 @@ interface PostComponentProps {
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
+  onFavoriteClick?: (statusId: string, currentlyFavorited: boolean) => Promise<{ favourited: boolean; favourites_count: number }>;
 }
 
 const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> = ({ videoUrl, onVideoClick }) => {
@@ -98,7 +99,14 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick, onReplyClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick }) => {
+  const [localStatus, setLocalStatus] = useState(status);
+  const [isFavoriting, setIsFavoriting] = useState(false);
+
+  // Update local status when prop changes
+  useEffect(() => {
+    setLocalStatus(status);
+  }, [status]);
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -136,8 +144,26 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
 
   const handleReplyClick = () => {
     if (onReplyClick) {
-      const mentionHandles = extractMentionHandles(status);
-      onReplyClick(status.id, mentionHandles);
+      const mentionHandles = extractMentionHandles(localStatus);
+      onReplyClick(localStatus.id, mentionHandles);
+    }
+  };
+
+  const handleFavoriteClick = async () => {
+    if (!onFavoriteClick || isFavoriting) return;
+
+    setIsFavoriting(true);
+    try {
+      const result = await onFavoriteClick(localStatus.id, localStatus.favourited);
+      setLocalStatus(prev => ({
+        ...prev,
+        favourited: result.favourited,
+        favourites_count: result.favourites_count
+      }));
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setIsFavoriting(false);
     }
   };
 
@@ -145,7 +171,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   if (status.reblog) {
     return (
       <div 
-        data-post-id={status.id}
+        data-post-id={localStatus.id}
         style={{
           padding: '8px',
           border: '1px solid #808080',
@@ -187,7 +213,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={onFavoriteClick} />
       </div>
     );
   }
@@ -195,7 +221,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   // Regular post
   return (
     <div 
-      data-post-id={status.id}
+      data-post-id={localStatus.id}
       style={{
         padding: '8px',
         border: '1px solid #808080',
@@ -213,7 +239,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         marginBottom: '8px'
       }}>
         <img 
-          src={status.account.avatar} 
+          src={localStatus.account.avatar} 
           alt="Avatar"
           style={{
             width: '32px',
@@ -239,9 +265,9 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
                 cursor: onUserClick ? 'pointer' : 'default',
                 textDecoration: onUserClick ? 'underline' : 'none'
               }}
-              onClick={() => onUserClick && onUserClick(status.account.id)}
+              onClick={() => onUserClick && onUserClick(localStatus.account.id)}
             >
-              {status.account.display_name || status.account.username}
+              {localStatus.account.display_name || localStatus.account.username}
             </strong>
             <span style={{ 
               color: '#808080',
@@ -251,20 +277,20 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
               flexShrink: 1,
               minWidth: 0
             }}>
-              @{status.account.acct}
+              @{localStatus.account.acct}
             </span>
           </div>
           <div style={{ 
             fontSize: '11px', 
             color: '#808080' 
           }}>
-            {formatDate(status.created_at)}
+            {formatDate(localStatus.created_at)}
           </div>
         </div>
       </div>
 
       {/* Spoiler warning if present */}
-      {status.spoiler_text && (
+      {localStatus.spoiler_text && (
         <div style={{
           padding: '4px 8px',
           backgroundColor: '#ffffe0',
@@ -273,7 +299,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           fontSize: '11px',
           fontWeight: 'bold'
         }}>
-          Content Warning: {status.spoiler_text}
+          Content Warning: {localStatus.spoiler_text}
         </div>
       )}
 
@@ -282,18 +308,18 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         marginBottom: '8px',
         lineHeight: '1.4'
       }}>
-        {stripHtml(status.content)}
+        {stripHtml(localStatus.content)}
       </div>
 
       {/* Media attachments */}
-      {status.media_attachments.length > 0 && (
+      {localStatus.media_attachments.length > 0 && (
         <div style={{
           marginBottom: '8px',
           display: 'grid',
-          gridTemplateColumns: status.media_attachments.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+          gridTemplateColumns: localStatus.media_attachments.length === 1 ? '1fr' : 'repeat(2, 1fr)',
           gap: '4px'
         }}>
-          {status.media_attachments.map((media) => (
+          {localStatus.media_attachments.map((media) => (
             <div key={media.id} style={{ border: '1px solid #808080' }}>
               {media.type === 'image' && (
                 <img 
@@ -345,30 +371,35 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           }}
           onClick={handleReplyClick}
         >
-          ↩️ {formatNumber(status.replies_count)}
+          ↩️ {formatNumber(localStatus.replies_count)}
         </span>
         <span 
           data-reblogs-count
-          style={{ color: status.reblogged ? '#008000' : '#808080' }}
+          style={{ color: localStatus.reblogged ? '#008000' : '#808080' }}
         >
-          🔄 {formatNumber(status.reblogs_count)}
+          🔄 {formatNumber(localStatus.reblogs_count)}
         </span>
         <span 
           data-favourites-count
-          style={{ color: status.favourited ? '#ff0000' : '#808080' }}
+          style={{ 
+            color: localStatus.favourited ? '#ff0000' : '#808080',
+            cursor: onFavoriteClick ? 'pointer' : 'default',
+            opacity: isFavoriting ? 0.5 : 1
+          }}
+          onClick={handleFavoriteClick}
         >
-          ⭐ {formatNumber(status.favourites_count)}
+          ⭐ {formatNumber(localStatus.favourites_count)}
         </span>
         <span 
           style={{ 
             marginLeft: 'auto',
             cursor: onConversationClick ? 'pointer' : 'default'
           }}
-          onClick={() => onConversationClick && onConversationClick(status.id)}
+          onClick={() => onConversationClick && onConversationClick(localStatus.id)}
         >
-          {status.visibility === 'public' ? '🌐' : 
-           status.visibility === 'unlisted' ? '🔓' :
-           status.visibility === 'private' ? '🔒' : '✉️'}
+          {localStatus.visibility === 'public' ? '🌐' : 
+           localStatus.visibility === 'unlisted' ? '🔓' :
+           localStatus.visibility === 'private' ? '🔒' : '✉️'}
         </span>
       </div>
     </div>

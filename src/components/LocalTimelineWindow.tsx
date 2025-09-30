@@ -161,6 +161,31 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
     }
   };
 
+  const handleFavoriteClick = async (statusId: string, currentlyFavorited: boolean): Promise<{ favourited: boolean; favourites_count: number }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyFavorited ? 'unfavourite' : 'favourite';
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return {
+      favourited: updatedStatus.favourited,
+      favourites_count: updatedStatus.favourites_count
+    };
+  };
+
   useEffect(() => {
     fetchTimeline();
   }, []);
@@ -270,7 +295,7 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} />
           ))}
 
           {/* Load more button */}
