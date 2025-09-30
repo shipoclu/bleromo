@@ -12,7 +12,7 @@ const App: React.FC = () => {
   const snap = useSnapshot(appState);
   const [imageWindowData, setImageWindowData] = useState<Record<string, { imageUrl: string; imageDescription?: string; windowNumber: number }>>({});
   const [imageWindowCounter, setImageWindowCounter] = useState(1);
-  const [taskbarKey, setTaskbarKey] = useState(0);
+  const [closedWindows, setClosedWindows] = useState<Set<string>>(new Set());
   
   const {
     windows,
@@ -262,6 +262,11 @@ const App: React.FC = () => {
       flexDirection: 'column'
     }}>
       {windows.map((win: any) => {
+        // Skip closed windows
+        if (closedWindows.has(win.id)) {
+          return null;
+        }
+        
         if (win.id === 'user-profile') {
           return (
             <UserProfileWindow
@@ -271,7 +276,11 @@ const App: React.FC = () => {
               isMinimized={win.isMinimized}
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
-              onClose={() => removeWindow({ id: win.id })}
+              onClose={() => {
+                console.log('Closing window:', win.id);
+                setClosedWindows(prev => new Set([...prev, win.id]));
+                console.log('Window closed:', win.id);
+              }}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
@@ -291,7 +300,11 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
-              onClose={() => removeWindow({ id: win.id })}
+              onClose={() => {
+                console.log('Closing window:', win.id);
+                setClosedWindows(prev => new Set([...prev, win.id]));
+                console.log('Window closed:', win.id);
+              }}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
@@ -311,7 +324,11 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
-              onClose={() => removeWindow({ id: win.id })}
+              onClose={() => {
+                console.log('Closing window:', win.id);
+                setClosedWindows(prev => new Set([...prev, win.id]));
+                console.log('Window closed:', win.id);
+              }}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
@@ -340,17 +357,15 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onClose={() => {
-                // Remove window from window manager first
-                removeWindow({ id: win.id });
-                // Force taskbar re-render to work around potential wtkrjs bug
-                setTaskbarKey(prev => prev + 1);
-                // Delay image data cleanup to let window manager finish
-                setTimeout(() => {
-                  setImageWindowData(prev => {
-                    const { [win.id]: removed, ...rest } = prev;
-                    return rest;
-                  });
-                }, 50);
+                console.log('Closing image window:', win.id);
+                // Add to closed windows set
+                setClosedWindows(prev => new Set([...prev, win.id]));
+                // Clean up image data
+                setImageWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                console.log('Image window closed:', win.id);
               }}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -366,7 +381,6 @@ const App: React.FC = () => {
       
       <div style={{ marginTop: 'auto' }}>
         <TaskBar
-          key={taskbarKey}
           windows={windows.map((win: any) => ({
             id: win.id,
             title: win.title,
