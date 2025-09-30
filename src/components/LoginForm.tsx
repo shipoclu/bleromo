@@ -39,7 +39,26 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
     setIsValid(validateHandle(handle));
   }, [handle]);
 
-  const registerApp = async (serverUrl: string) => {
+  const getOrRegisterApp = async (serverUrl: string, domain: string) => {
+    // Check if we already have app credentials for this server
+    const serverAppKey = `bleromofw_app_${domain}`;
+    const existingAppData = localStorage.getItem(serverAppKey);
+    
+    if (existingAppData) {
+      try {
+        const appData = JSON.parse(existingAppData);
+        if (appData.client_id && appData.client_secret) {
+          console.log('Using existing app credentials for', domain);
+          return appData;
+        }
+      } catch (error) {
+        console.warn('Invalid stored app data for', domain, 'registering new app');
+        localStorage.removeItem(serverAppKey);
+      }
+    }
+    
+    // Register new app
+    console.log('Registering new app for', domain);
     const response = await fetch(`${serverUrl}/api/v1/apps`, {
       method: 'POST',
       headers: {
@@ -57,7 +76,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
       throw new Error(`App registration failed: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    const appData = await response.json();
+    
+    // Store app credentials permanently per-server
+    localStorage.setItem(serverAppKey, JSON.stringify({
+      client_id: appData.client_id,
+      client_secret: appData.client_secret,
+      serverUrl: serverUrl,
+      domain: domain
+    }));
+    
+    return appData;
   };
 
   const generateAuthUrl = (handle: string, clientId: string) => {
@@ -96,8 +125,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
       const [, domain] = handle.split('@');
       const serverUrl = `https://${domain}`;
 
-      // Register app with the server first
-      const appData = await registerApp(serverUrl);
+      // Get existing or register new app with the server
+      const appData = await getOrRegisterApp(serverUrl, domain);
       
       // Store app credentials for the callback
       sessionStorage.setItem('oauth_app_data', JSON.stringify({

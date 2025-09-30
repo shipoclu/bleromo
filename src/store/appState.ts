@@ -73,7 +73,11 @@ export const logout = () => {
   appState.accessToken = null;
   appState.userData = null;
   
+  // Only remove auth data, keep OAuth app credentials per-server
   localStorage.removeItem('bleromofw_auth');
+  
+  // Note: OAuth app credentials (bleromofw_app_*) are intentionally preserved
+  // so users don't need to re-register apps when logging back into the same server
 };
 
 export const loadStoredAuth = () => {

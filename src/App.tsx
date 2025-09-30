@@ -14,6 +14,7 @@ import VideoViewerWindow from './components/VideoViewerWindow';
 import OtherUserProfileWindow from './components/OtherUserProfileWindow';
 import UserPostsTimelineWindow from './components/UserPostsTimelineWindow';
 import PostCompositionWindow from './components/PostCompositionWindow';
+import AboutWindow from './components/AboutWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -188,6 +189,24 @@ const App: React.FC = () => {
         id: composeWindowId,
         title: title,
         icon: <ComposeIcon />
+      });
+    }
+  };
+
+  const openAbout = () => {
+    const aboutWindowId = 'about';
+    const existingWindow = windows.find((win: any) => win.id === aboutWindowId);
+    
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: aboutWindowId });
+      }
+      focusWindow({ id: aboutWindowId });
+    } else {
+      addWindow({
+        id: aboutWindowId,
+        title: 'About Bleromo',
+        icon: <HelpIcon />
       });
     }
   };
@@ -393,15 +412,15 @@ const App: React.FC = () => {
   );
 
   const TimelineIcon = () => (
-    <img src="/directory_closed-0.png" alt="Timeline" width="16" height="16" />
+    <img src="/earth.png" alt="Timeline" width="16" height="16" />
   );
 
   const LocalTimelineIcon = () => (
-    <img src="/directory_closed-0.png" alt="Local Timeline" width="16" height="16" />
+    <img src="/tree-0.png" alt="Local Timeline" width="16" height="16" />
   );
 
   const HomeTimelineIcon = () => (
-    <img src="/directory_closed-0.png" alt="Home Timeline" width="16" height="16" />
+    <img src="/newspaper-letter.png" alt="Home Timeline" width="16" height="16" />
   );
 
   const ImageIcon = () => (
@@ -421,7 +440,11 @@ const App: React.FC = () => {
   );
 
   const ComposeIcon = () => (
-    <img src="/directory_closed-0.png" alt="Compose" width="16" height="16" />
+    <img src="/notepad-1.png" alt="Compose" width="16" height="16" />
+  );
+
+  const HelpIcon = () => (
+    <img src="/help_question_mark-0.png" alt="Help" width="16" height="16" />
   );
 
   const StartIcon = () => (
@@ -482,9 +505,39 @@ const App: React.FC = () => {
     },
     {
       type: 'item' as const,
+      text: 'About',
+      icon: <HelpIcon />,
+      onClick: openAbout
+    },
+    {
+      type: 'separator' as const
+    },
+    {
+      type: 'item' as const,
       text: 'Logout',
       icon: <LogoutIcon />,
       onClick: () => {
+        // Close all windows before logout
+        windows.forEach(window => {
+          removeWindow(window.id);
+        });
+        
+        // Clear all window state data
+        setImageWindowData({});
+        setVideoWindowData({});
+        setConversationWindowData({});
+        setUserProfileWindowData({});
+        setUserPostsTimelineWindowData({});
+        setComposeWindowData({});
+        
+        // Reset all counters
+        setImageWindowCounter(1);
+        setVideoWindowCounter(1);
+        setConversationWindowCounter(1);
+        setUserProfileWindowCounter(1);
+        setUserPostsTimelineWindowCounter(1);
+        setComposeWindowCounter(1);
+        
         logout();
       }
     }
@@ -850,6 +903,20 @@ const App: React.FC = () => {
               onRestore={() => restoreWindow({ id: win.id })}
               onMove={() => moveWindow({ id: win.id })}
               onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id === 'about') {
+          return (
+            <AboutWindow
+              key={win.id}
+              id={win.id}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => removeWindow(win.id)}
+              onFocus={() => focusWindow({ id: win.id })}
             />
           );
         }
