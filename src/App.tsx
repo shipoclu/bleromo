@@ -138,51 +138,36 @@ const App: React.FC = () => {
   };
 
   const LogoutIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16">
-      <path d="M6,2 L6,6 L2,6 L7,11 L12,6 L8,6 L8,2 Z" fill="currentColor" />
-    </svg>
+    <img src="/users_key-4.png" alt="Logout" width="16" height="16" />
   );
 
   const UserIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16">
-      <circle cx="8" cy="5" r="3" fill="none" stroke="currentColor" strokeWidth="1" />
-      <path d="M2,14 Q8,10 14,14" fill="none" stroke="currentColor" strokeWidth="1" />
-    </svg>
+    <img src="/address_book_user.png" alt="User" width="16" height="16" />
   );
 
   const TimelineIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16">
-      <rect x="2" y="2" width="12" height="2" fill="currentColor" />
-      <rect x="2" y="6" width="12" height="2" fill="currentColor" />
-      <rect x="2" y="10" width="12" height="2" fill="currentColor" />
-      <rect x="2" y="14" width="12" height="2" fill="currentColor" />
-    </svg>
+    <img src="/directory_closed-0.png" alt="Timeline" width="16" height="16" />
   );
 
   const LocalTimelineIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16">
-      <rect x="2" y="2" width="12" height="2" fill="currentColor" />
-      <rect x="2" y="6" width="8" height="2" fill="currentColor" />
-      <rect x="2" y="10" width="10" height="2" fill="currentColor" />
-      <rect x="2" y="14" width="6" height="2" fill="currentColor" />
-      <circle cx="13" cy="7" r="2" fill="none" stroke="currentColor" strokeWidth="1" />
-    </svg>
+    <img src="/directory_closed-0.png" alt="Local Timeline" width="16" height="16" />
   );
 
   const ImageIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16">
-      <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1" />
-      <circle cx="6" cy="6" r="1.5" fill="currentColor" />
-      <path d="M2,12 L5,9 L7,11 L11,7 L14,10 L14,14 L2,14 Z" fill="currentColor" />
-    </svg>
+    <img src="/camera3-4.png" alt="Image" width="16" height="16" />
   );
 
   const StartIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 20 20">
-      <rect x="2" y="2" width="16" height="16" fill="#008080" stroke="#004040" strokeWidth="1" />
-      <path d="M4,4 L16,4 L16,16 L4,16 Z" fill="#00A0A0" />
-      <rect x="6" y="6" width="8" height="8" fill="#FFFF00" />
-    </svg>
+    <img 
+      src="/pleroma-logo.svg" 
+      alt="Start" 
+      style={{ 
+        width: '14px', 
+        height: '14px',
+        objectFit: 'contain',
+        margin: '2px'
+      }} 
+    />
   );
 
   const startMenuItems = snap.isLoggedIn ? [
