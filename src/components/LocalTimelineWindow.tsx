@@ -5,6 +5,13 @@ import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
 
+interface EmojiReaction {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string;
+}
+
 interface Status {
   id: string;
   created_at: string;
@@ -40,6 +47,7 @@ interface Status {
   favourited: boolean;
   reblog?: Status;
   url: string;
+  emoji_reactions?: EmojiReaction[];
 }
 
 interface LocalTimelineWindowProps {
@@ -212,6 +220,28 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
     };
   };
 
+  const handleEmojiReactClick = async (statusId: string, emojiName: string, currentlyReacted: boolean): Promise<EmojiReaction[]> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReacted ? 'unreact' : 'react';
+    const response = await fetch(`${snap.serverUrl}/api/v1/pleroma/statuses/${statusId}/reactions/${encodeURIComponent(emojiName)}`, {
+      method: currentlyReacted ? 'DELETE' : 'PUT',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} with ${emojiName}: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return updatedStatus.emoji_reactions || [];
+  };
+
   useEffect(() => {
     fetchTimeline();
   }, []);
@@ -321,7 +351,7 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
           ))}
 
           {/* Load more button */}

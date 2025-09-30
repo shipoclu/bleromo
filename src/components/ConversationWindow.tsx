@@ -22,6 +22,13 @@ interface MediaAttachment {
   description?: string;
 }
 
+interface EmojiReaction {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string;
+}
+
 interface Status {
   id: string;
   created_at: string;
@@ -44,6 +51,7 @@ interface Status {
   favourited: boolean;
   reblog?: Status;
   url: string;
+  emoji_reactions?: EmojiReaction[];
 }
 
 interface ConversationContext {
@@ -218,6 +226,28 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
     };
   };
 
+  const handleEmojiReactClick = async (statusId: string, emojiName: string, currentlyReacted: boolean): Promise<EmojiReaction[]> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReacted ? 'unreact' : 'react';
+    const response = await fetch(`${snap.serverUrl}/api/v1/pleroma/statuses/${statusId}/reactions/${encodeURIComponent(emojiName)}`, {
+      method: currentlyReacted ? 'DELETE' : 'PUT',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} with ${emojiName}: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return updatedStatus.emoji_reactions || [];
+  };
+
   return (
     <DesktopWindow
       id={id}
@@ -352,6 +382,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
                   onReplyClick={onReplyClick}
                   onFavoriteClick={handleFavoriteClick}
                   onReblogClick={handleReblogClick}
+                  onEmojiReactClick={handleEmojiReactClick}
                 />
               </div>
               

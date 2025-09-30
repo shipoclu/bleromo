@@ -18,6 +18,13 @@ interface MediaAttachment {
   description?: string;
 }
 
+interface EmojiReaction {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string; // For custom emoji
+}
+
 interface Status {
   id: string;
   created_at: string;
@@ -40,6 +47,11 @@ interface Status {
   favourited: boolean;
   reblog?: Status;
   url: string;
+  emoji_reactions?: EmojiReaction[];
+  pleroma?: {
+    emoji_reactions?: EmojiReaction[];
+    [key: string]: any;
+  };
 }
 
 interface PostComponentProps {
@@ -51,6 +63,7 @@ interface PostComponentProps {
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onFavoriteClick?: (statusId: string, currentlyFavorited: boolean) => Promise<{ favourited: boolean; favourites_count: number }>;
   onReblogClick?: (statusId: string, currentlyReblogged: boolean) => Promise<{ reblogged: boolean; reblogs_count: number }>;
+  onEmojiReactClick?: (statusId: string, emojiName: string, currentlyReacted: boolean) => Promise<EmojiReaction[]>;
 }
 
 const SensitiveMediaOverlay: React.FC<{ onClick: () => void }> = ({ onClick }) => {
@@ -133,11 +146,12 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick, onEmojiReactClick }) => {
   const [localStatus, setLocalStatus] = useState(status);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isReblogging, setIsReblogging] = useState(false);
   const [showSensitiveMedia, setShowSensitiveMedia] = useState(false);
+  const [reactingEmoji, setReactingEmoji] = useState<string | null>(null);
 
   // Update local status when prop changes
   useEffect(() => {
@@ -159,6 +173,16 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
+  };
+
+  // Helper function to get emoji reactions from the correct location
+  const getEmojiReactions = (status: Status): EmojiReaction[] => {
+    // First check if they're in the pleroma field (Pleroma/Akkoma)
+    if (status.pleroma?.emoji_reactions) {
+      return status.pleroma.emoji_reactions;
+    }
+    // Fallback to direct field (other implementations)
+    return status.emoji_reactions || [];
   };
 
   const extractMentionHandles = (status: Status) => {
@@ -235,6 +259,45 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     }
   };
 
+  const handleEmojiReactClick = async (emojiName: string) => {
+    if (!onEmojiReactClick || reactingEmoji === emojiName) return;
+
+    const currentReactions = getEmojiReactions(localStatus);
+    const currentReaction = currentReactions.find(r => r.name === emojiName);
+    console.log(`🎭 Before reaction - Current reactions:`, currentReactions);
+    console.log(`🎭 Clicking on emoji:`, emojiName, `Currently reacted:`, currentReaction?.me || false);
+    
+    setReactingEmoji(emojiName);
+    
+    try {
+      const updatedReactions = await onEmojiReactClick(localStatus.id, emojiName, currentReaction?.me || false);
+      console.log(`🎭 API returned reactions:`, updatedReactions);
+      
+      // Update the status with emoji reactions in the correct location
+      const updatedStatus = {
+        ...localStatus,
+        // Update both fields to ensure compatibility
+        emoji_reactions: updatedReactions,
+        pleroma: {
+          ...localStatus.pleroma,
+          emoji_reactions: updatedReactions
+        }
+      };
+      
+      console.log(`🎭 Updated status reactions:`, getEmojiReactions(updatedStatus));
+      setLocalStatus(updatedStatus);
+      
+      // Don't call updatePostEngagementCounts for emoji reactions since it breaks the DOM
+      // React will handle the emoji reaction updates for this component
+      console.log(`🎭 Skipping cross-window update for emoji reactions to prevent DOM corruption`);
+    } catch (error) {
+      console.error('Error toggling emoji reaction:', error);
+    } finally {
+      console.log(`🎭 Clearing reactingEmoji state`);
+      setReactingEmoji(null);
+    }
+  };
+
   // If this is a boost/reblog, show the boost info and the original post
   if (status.reblog) {
     return (
@@ -281,7 +344,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={onFavoriteClick} onReblogClick={onReblogClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={onFavoriteClick} onReblogClick={onReblogClick} onEmojiReactClick={onEmojiReactClick} />
       </div>
     );
   }
@@ -481,6 +544,59 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         >
           ⭐ {formatNumber(localStatus.favourites_count)}
         </span>
+        
+        {/* Emoji Reactions */}
+        {(() => {
+          const reactions = getEmojiReactions(localStatus);
+          console.log(`🎨 Rendering emoji reactions for status ${localStatus.id}:`, reactions);
+          return reactions.length > 0;
+        })() && (
+          <>
+            {getEmojiReactions(localStatus).map((reaction) => {
+              const opacity = reactingEmoji === reaction.name ? 0.5 : 1;
+              console.log(`🎨 Rendering reaction:`, {
+                name: reaction.name,
+                url: reaction.url,
+                count: reaction.count,
+                me: reaction.me,
+                reactingEmoji: reactingEmoji,
+                opacity: opacity
+              });
+              return (
+                <span
+                  key={reaction.name}
+                  data-emoji-reaction={reaction.name}
+                  style={{
+                    cursor: onEmojiReactClick ? 'pointer' : 'default',
+                    color: reaction.me ? '#ff0000' : '#808080',
+                    opacity: opacity,
+                    fontSize: '11px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px'
+                  }}
+                  onClick={() => handleEmojiReactClick(reaction.name)}
+                >
+                  {reaction.url ? (
+                    <img
+                      src={reaction.url}
+                      alt={reaction.name}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        verticalAlign: 'middle'
+                      }}
+                    />
+                  ) : (
+                    reaction.name
+                  )}
+                  {formatNumber(reaction.count)}
+                </span>
+              );
+            })}
+          </>
+        )}
+        
         <span 
           style={{ 
             marginLeft: 'auto',

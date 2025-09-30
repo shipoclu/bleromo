@@ -5,6 +5,13 @@ import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
 
+interface EmojiReaction {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string;
+}
+
 interface Status {
   id: string;
   created_at: string;
@@ -40,6 +47,11 @@ interface Status {
   favourited: boolean;
   reblog?: Status;
   url: string;
+  emoji_reactions?: EmojiReaction[];
+  pleroma?: {
+    emoji_reactions?: EmojiReaction[];
+    [key: string]: any;
+  };
 }
 
 interface HomeTimelineWindowProps {
@@ -96,7 +108,8 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
 
     try {
       const params = new URLSearchParams({
-        limit: '20'
+        limit: '20',
+        with_muted: 'true'
       });
       
       if (loadMore && maxId) {
@@ -114,6 +127,18 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
       }
 
       const newStatuses: Status[] = await response.json();
+      
+      // Debug: Check for emoji reactions in the response
+      const statusesWithReactions = newStatuses.filter(status => 
+        (status.emoji_reactions && status.emoji_reactions.length > 0) ||
+        (status.pleroma?.emoji_reactions && status.pleroma.emoji_reactions.length > 0)
+      );
+      if (statusesWithReactions.length > 0) {
+        console.log('📱 Posts with emoji reactions found:', statusesWithReactions.map(s => ({
+          id: s.id,
+          reactions: s.pleroma?.emoji_reactions || s.emoji_reactions
+        })));
+      }
       
       // Filter to only show notes and boosts (no other activity types)
       const filteredStatuses = newStatuses.filter(status => 
@@ -239,6 +264,38 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
     }
   };
 
+  const handleEmojiReactClick = async (statusId: string, emojiName: string, currentlyReacted: boolean): Promise<EmojiReaction[]> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReacted ? 'unreact' : 'react';
+    const apiUrl = `${snap.serverUrl}/api/v1/pleroma/statuses/${statusId}/reactions/${encodeURIComponent(emojiName)}`;
+    console.log(`🎯 Emoji ${endpoint} API call:`, apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: currentlyReacted ? 'DELETE' : 'PUT',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`🎯 Emoji ${endpoint} response status:`, response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`🎯 Emoji ${endpoint} failed:`, errorText);
+      throw new Error(`Failed to ${endpoint} with ${emojiName}: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    console.log(`🎯 Emoji ${endpoint} response:`, updatedStatus);
+    console.log(`🎯 Updated emoji reactions:`, updatedStatus.pleroma?.emoji_reactions || updatedStatus.emoji_reactions);
+    
+    return updatedStatus.pleroma?.emoji_reactions || updatedStatus.emoji_reactions || [];
+  };
+
   useEffect(() => {
     fetchTimeline();
   }, []);
@@ -348,7 +405,7 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
           ))}
 
           {/* Load more button */}

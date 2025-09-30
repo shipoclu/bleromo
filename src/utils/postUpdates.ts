@@ -1,3 +1,10 @@
+interface EmojiReaction {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string;
+}
+
 interface Status {
   id: string;
   replies_count: number;
@@ -6,6 +13,11 @@ interface Status {
   reblogged: boolean;
   favourited: boolean;
   sensitive: boolean;
+  emoji_reactions?: EmojiReaction[];
+  pleroma?: {
+    emoji_reactions?: EmojiReaction[];
+    [key: string]: any;
+  };
 }
 
 const formatNumber = (num: number) => {
@@ -13,6 +25,16 @@ const formatNumber = (num: number) => {
     return (num / 1000).toFixed(1) + 'K';
   }
   return num.toString();
+};
+
+// Helper function to get emoji reactions from the correct location
+const getEmojiReactions = (status: Status): EmojiReaction[] => {
+  // First check if they're in the pleroma field (Pleroma/Akkoma)
+  if (status.pleroma?.emoji_reactions) {
+    return status.pleroma.emoji_reactions;
+  }
+  // Fallback to direct field (other implementations)
+  return status.emoji_reactions || [];
 };
 
 export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: string) => {
@@ -90,6 +112,25 @@ export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: st
       if (favouritesElement) {
         favouritesElement.textContent = `⭐ ${formatNumber(status.favourites_count)}`;
         favouritesElement.style.color = status.favourited ? '#ff0000' : '#808080';
+      }
+
+      // Update emoji reactions
+      const reactions = getEmojiReactions(status);
+      if (reactions.length > 0) {
+        reactions.forEach(reaction => {
+          const reactionElement = postElement.querySelector(`[data-emoji-reaction="${reaction.name}"]`) as HTMLElement;
+          if (reactionElement) {
+            // Update the count text
+            const countText = reactionElement.textContent;
+            if (countText) {
+              // Replace the count at the end of the text while preserving the emoji
+              const newText = countText.replace(/\d+$/, formatNumber(reaction.count));
+              reactionElement.textContent = newText;
+            }
+            // Update the color based on reaction state
+            reactionElement.style.color = reaction.me ? '#ff0000' : '#808080';
+          }
+        });
       }
     });
   });
