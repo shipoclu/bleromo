@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 interface Account {
   id: string;
@@ -67,18 +67,18 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   onUserClick,
   onReplyClick
 }) => {
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  }, []);
 
-  const stripHtml = (html: string) => {
+  const stripHtml = useCallback((html: string) => {
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
-  };
+  }, []);
 
-  const processCustomEmoji = (content: string, emojis?: CustomEmoji[]) => {
+  const processCustomEmoji = useCallback((content: string, emojis?: CustomEmoji[]) => {
     if (!emojis || emojis.length === 0) {
       return stripHtml(content);
     }
@@ -87,12 +87,24 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
     
     emojis.forEach(emoji => {
       const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
-      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em; width: auto; vertical-align: middle; display: inline;" />`;
+      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em !important; width: auto !important; vertical-align: middle !important; display: inline !important; opacity: 1 !important; visibility: visible !important; transform: none !important;" />`;
       processedContent = processedContent.replace(emojiPattern, emojiImg);
     });
 
     return processedContent;
-  };
+  }, [stripHtml]);
+
+  // Memoize processed content
+  const processedDisplayName = useMemo(() => {
+    return processCustomEmoji(notification.account.display_name || notification.account.username, notification.account.emojis);
+  }, [notification.account.display_name, notification.account.username, notification.account.emojis, processCustomEmoji]);
+
+  const processedStatusContent = useMemo(() => {
+    if (notification.status) {
+      return processCustomEmoji(notification.status.content, notification.status.emojis);
+    }
+    return '';
+  }, [notification.status?.content, notification.status?.emojis, processCustomEmoji]);
 
   const getNotificationIcon = (type: string, emoji?: string) => {
     switch (type) {
@@ -179,7 +191,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
               }}
               onClick={() => onUserClick && onUserClick(notification.account.id)}
               dangerouslySetInnerHTML={{
-                __html: processCustomEmoji(notification.account.display_name || notification.account.username, notification.account.emojis)
+                __html: processedDisplayName
               }}
             />
             <span style={{ color: '#808080' }}>@{notification.account.acct}</span>
@@ -224,7 +236,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
               lineHeight: '1.4'
             }}
             dangerouslySetInnerHTML={{
-              __html: processCustomEmoji(notification.status.content, notification.status.emojis)
+              __html: processedStatusContent
             }}
           />
 
@@ -351,4 +363,4 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   );
 };
 
-export default NotificationComponent;
+export default React.memo(NotificationComponent);

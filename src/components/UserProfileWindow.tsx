@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DesktopWindow } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
@@ -93,13 +93,13 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
     return new Intl.NumberFormat().format(num);
   };
 
-  const stripHtml = (html: string) => {
+  const stripHtml = useCallback((html: string) => {
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
-  };
+  }, []);
 
-  const processCustomEmoji = (content: string, emojis?: CustomEmoji[]) => {
+  const processCustomEmoji = useCallback((content: string, emojis?: CustomEmoji[]) => {
     if (!emojis || emojis.length === 0) {
       return stripHtml(content);
     }
@@ -108,12 +108,19 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
     
     emojis.forEach(emoji => {
       const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
-      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em; width: auto; vertical-align: middle; display: inline;" />`;
+      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em !important; width: auto !important; vertical-align: middle !important; display: inline !important; opacity: 1 !important; visibility: visible !important; transform: none !important;" />`;
       processedContent = processedContent.replace(emojiPattern, emojiImg);
     });
 
     return processedContent;
-  };
+  }, [stripHtml]);
+
+  const processedDisplayName = useMemo(() => {
+    if (userProfile) {
+      return processCustomEmoji(userProfile.display_name || userProfile.username, userProfile.emojis);
+    }
+    return '';
+  }, [userProfile?.display_name, userProfile?.username, userProfile?.emojis, processCustomEmoji]);
 
   return (
     <DesktopWindow
@@ -205,7 +212,7 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
                     marginBottom: '4px' 
                   }}
                   dangerouslySetInnerHTML={{
-                    __html: processCustomEmoji(userProfile.display_name || userProfile.username, userProfile.emojis)
+                    __html: processedDisplayName
                   }}
                 />
                 <div style={{ 
@@ -328,4 +335,4 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
   );
 };
 
-export default UserProfileWindow;
+export default React.memo(UserProfileWindow);

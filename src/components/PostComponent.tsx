@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
 
 interface Account {
@@ -166,32 +166,102 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   useEffect(() => {
     setLocalStatus(status);
   }, [status]);
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  }, []);
 
-  const stripHtml = (html: string) => {
+  const stripHtml = useCallback((html: string) => {
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
-  };
+  }, []);
 
-  const processCustomEmoji = (content: string, emojis?: CustomEmoji[]) => {
+  const processCustomEmojiToElements = useCallback((content: string, emojis?: CustomEmoji[]): React.ReactNode[] => {
     if (!emojis || emojis.length === 0) {
-      return stripHtml(content);
+      return [stripHtml(content)];
     }
 
     let processedContent = stripHtml(content);
+    const parts: React.ReactNode[] = [];
     
-    emojis.forEach(emoji => {
+    // Create a map of all emoji patterns and their positions
+    const emojiMatches: Array<{ index: number; length: number; emoji: CustomEmoji; matchIndex: number }> = [];
+    
+    emojis.forEach((emoji, emojiIndex) => {
       const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
-      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em; width: auto; vertical-align: middle; display: inline;" />`;
-      processedContent = processedContent.replace(emojiPattern, emojiImg);
+      let match;
+      
+      while ((match = emojiPattern.exec(processedContent)) !== null) {
+        emojiMatches.push({
+          index: match.index,
+          length: match[0].length,
+          emoji: emoji,
+          matchIndex: emojiIndex * 1000 + match.index // unique key
+        });
+      }
     });
+    
+    // Sort matches by position
+    emojiMatches.sort((a, b) => a.index - b.index);
+    
+    let lastIndex = 0;
+    emojiMatches.forEach((match) => {
+      // Add text before emoji
+      if (match.index > lastIndex) {
+        const textPart = processedContent.slice(lastIndex, match.index);
+        if (textPart) {
+          parts.push(textPart);
+        }
+      }
+      
+      // Add emoji as React element
+      parts.push(
+        <img 
+          key={`emoji-${match.matchIndex}`}
+          src={match.emoji.url} 
+          alt={`:${match.emoji.shortcode}:`}
+          style={{
+            height: '1.2em',
+            width: 'auto',
+            verticalAlign: 'middle',
+            display: 'inline',
+            opacity: 1,
+            visibility: 'visible',
+            transform: 'none'
+          }}
+        />
+      );
+      
+      lastIndex = match.index + match.length;
+    });
+    
+    // Add remaining text
+    if (lastIndex < processedContent.length) {
+      const remainingText = processedContent.slice(lastIndex);
+      if (remainingText) {
+        parts.push(remainingText);
+      }
+    }
+    
+    return parts.length > 0 ? parts : [processedContent];
+  }, [stripHtml]);
 
-    return processedContent;
-  };
+  // Memoize processed content to avoid re-processing during re-renders
+  const processedDisplayName = useMemo(() => {
+    return processCustomEmojiToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis);
+  }, [localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processCustomEmojiToElements]);
+
+  const processedContent = useMemo(() => {
+    return processCustomEmojiToElements(localStatus.content, localStatus.emojis);
+  }, [localStatus.content, localStatus.emojis, processCustomEmojiToElements]);
+
+  const processedReblogDisplayName = useMemo(() => {
+    if (localStatus.reblog) {
+      return processCustomEmojiToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis);
+    }
+    return [];
+  }, [localStatus.reblog, localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processCustomEmojiToElements]);
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -362,10 +432,9 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
               textDecoration: onUserClick ? 'underline' : 'none'
             }}
             onClick={() => onUserClick && onUserClick(status.account.id)}
-            dangerouslySetInnerHTML={{
-              __html: processCustomEmoji(status.account.display_name || status.account.username, status.account.emojis)
-            }}
-          /> 
+          >
+            {processedReblogDisplayName}
+          </strong> 
           <span style={{ flexShrink: 0 }}>boosted</span>
         </div>
         
@@ -423,10 +492,9 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
                 textDecoration: onUserClick ? 'underline' : 'none'
               }}
               onClick={() => onUserClick && onUserClick(localStatus.account.id)}
-              dangerouslySetInnerHTML={{
-                __html: processCustomEmoji(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis)
-              }}
-            />
+            >
+              {processedDisplayName}
+            </strong>
             <span style={{ 
               color: '#808080',
               overflow: 'hidden',
@@ -467,10 +535,9 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           marginBottom: '8px',
           lineHeight: '1.4'
         }}
-        dangerouslySetInnerHTML={{
-          __html: processCustomEmoji(localStatus.content, localStatus.emojis)
-        }}
-      />
+      >
+        {processedContent}
+      </div>
 
       {/* Media attachments */}
       {localStatus.media_attachments.length > 0 && (
@@ -643,4 +710,4 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   );
 };
 
-export default PostComponent;
+export default React.memo(PostComponent);
