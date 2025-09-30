@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface Account {
   id: string;
@@ -39,6 +39,55 @@ interface PostComponentProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
 }
+
+const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> = ({ videoUrl, onVideoClick }) => {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '120px',
+        position: 'relative',
+        cursor: 'pointer',
+        backgroundColor: '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: '1px solid #808080',
+        overflow: 'hidden'
+      }}
+      onClick={onVideoClick}
+    >
+      <video
+        src={videoUrl}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover'
+        }}
+        muted
+        preload="metadata"
+        loop
+      />
+      
+      {/* Play button overlay */}
+      <div style={{
+        width: '40px',
+        height: '40px',
+        borderRadius: '50%',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontSize: '20px',
+        position: 'absolute',
+        zIndex: 1
+      }}>
+        ▶
+      </div>
+    </div>
+  );
+};
 
 const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick }) => {
   const formatDate = (dateString: string) => {
@@ -182,41 +231,10 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
                 />
               )}
               {media.type === 'video' && (
-                <div
-                  style={{
-                    width: '100%',
-                    height: '120px',
-                    position: 'relative',
-                    cursor: 'pointer',
-                    backgroundImage: media.preview_url ? `url(${media.preview_url})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundColor: '#f0f0f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onClick={() => {
-                    console.log('Video clicked:', media.url, media.description);
-                    console.log('onVideoClick function exists:', !!onVideoClick);
-                    onVideoClick && onVideoClick(media.url, media.description);
-                  }}
-                >
-                  {/* Play button overlay */}
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '20px'
-                  }}>
-                    ▶
-                  </div>
-                </div>
+                <VideoThumbnail
+                  videoUrl={media.url}
+                  onVideoClick={() => onVideoClick && onVideoClick(media.url, media.description)}
+                />
               )}
               {media.type === 'audio' && (
                 <div style={{
