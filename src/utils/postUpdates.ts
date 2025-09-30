@@ -5,6 +5,7 @@ interface Status {
   favourites_count: number;
   reblogged: boolean;
   favourited: boolean;
+  sensitive: boolean;
 }
 
 const formatNumber = (num: number) => {

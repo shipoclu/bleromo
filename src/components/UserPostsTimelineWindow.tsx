@@ -19,6 +19,7 @@ interface Status {
   content: string;
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
+  sensitive: boolean;
   media_attachments: Array<{
     id: string;
     type: 'image' | 'video' | 'audio' | 'unknown';

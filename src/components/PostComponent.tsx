@@ -25,6 +25,7 @@ interface Status {
   content: string;
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
+  sensitive: boolean;
   media_attachments: MediaAttachment[];
   mentions: Array<{
     id: string;
@@ -52,12 +53,43 @@ interface PostComponentProps {
   onReblogClick?: (statusId: string, currentlyReblogged: boolean) => Promise<{ reblogged: boolean; reblogs_count: number }>;
 }
 
+const SensitiveMediaOverlay: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        zIndex: 1,
+        backgroundColor: '#ffffff'
+      }}
+      onClick={onClick}
+    >
+      <img
+        src="/silverlight.png"
+        alt="Sensitive media"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain'
+        }}
+      />
+    </div>
+  );
+};
+
 const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> = ({ videoUrl, onVideoClick }) => {
   return (
     <div
       style={{
         width: '100%',
-        height: '120px',
+        aspectRatio: '1',
         position: 'relative',
         cursor: 'pointer',
         backgroundColor: '#000000',
@@ -74,7 +106,7 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover'
+          objectFit: 'contain'
         }}
         muted
         preload="metadata"
@@ -105,6 +137,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   const [localStatus, setLocalStatus] = useState(status);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isReblogging, setIsReblogging] = useState(false);
+  const [showSensitiveMedia, setShowSensitiveMedia] = useState(false);
 
   // Update local status when prop changes
   useEffect(() => {
@@ -355,32 +388,50 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           gap: '4px'
         }}>
           {localStatus.media_attachments.map((media) => (
-            <div key={media.id} style={{ border: '1px solid #808080' }}>
+            <div key={media.id} style={{ 
+              border: '1px solid #808080',
+              position: 'relative'
+            }}>
               {media.type === 'image' && (
-                <img 
-                  src={media.preview_url || media.url}
-                  alt={media.description || 'Media attachment'}
-                  style={{
-                    width: '100%',
-                    height: '120px',
-                    objectFit: 'cover',
-                    display: 'block',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => onImageClick && onImageClick(media.url, media.description)}
-                />
+                <>
+                  <img 
+                    src={media.preview_url || media.url}
+                    alt={media.description || 'Media attachment'}
+                    style={{
+                      width: '100%',
+                      aspectRatio: '1',
+                      objectFit: 'contain',
+                      display: 'block',
+                      cursor: 'pointer',
+                      backgroundColor: '#f0f0f0'
+                    }}
+                    onClick={() => onImageClick && onImageClick(media.url, media.description)}
+                  />
+                  {localStatus.sensitive && !showSensitiveMedia && (
+                    <SensitiveMediaOverlay onClick={() => setShowSensitiveMedia(true)} />
+                  )}
+                </>
               )}
               {media.type === 'video' && (
-                <VideoThumbnail
-                  videoUrl={media.url}
-                  onVideoClick={() => onVideoClick && onVideoClick(media.url, media.description)}
-                />
+                <div style={{ position: 'relative' }}>
+                  <VideoThumbnail
+                    videoUrl={media.url}
+                    onVideoClick={() => onVideoClick && onVideoClick(media.url, media.description)}
+                  />
+                  {localStatus.sensitive && !showSensitiveMedia && (
+                    <SensitiveMediaOverlay onClick={() => setShowSensitiveMedia(true)} />
+                  )}
+                </div>
               )}
               {media.type === 'audio' && (
                 <div style={{
                   padding: '20px',
                   textAlign: 'center',
-                  backgroundColor: '#f0f0f0'
+                  backgroundColor: '#f0f0f0',
+                  aspectRatio: '1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}>
                   <audio src={media.url} controls style={{ width: '100%' }} />
                 </div>
