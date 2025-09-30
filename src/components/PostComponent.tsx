@@ -211,18 +211,33 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     // Find mention patterns using the mentions array from the API
     if (mentions && mentions.length > 0) {
       mentions.forEach((mention, mentionIndex) => {
-        // Try to match @username and @username@domain patterns
-        const patterns = [
-          `@${mention.username}`,
-          `@${mention.acct}`
-        ];
+        // First try to match the full @username@domain format if it exists in content
+        const fullPattern = `@${mention.acct}`;
+        const escapedFullPattern = fullPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const fullRegex = new RegExp(escapedFullPattern, 'g');
+        let foundFullMatch = false;
+        let match;
         
-        patterns.forEach(pattern => {
-          const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const mentionRegex = new RegExp(escapedPattern, 'g');
-          let match;
-          
-          while ((match = mentionRegex.exec(processedContent)) !== null) {
+        // Check if the full pattern exists
+        while ((match = fullRegex.exec(processedContent)) !== null) {
+          matches.push({
+            index: match.index,
+            length: match[0].length,
+            type: 'mention',
+            data: mention,
+            matchIndex: 20000 + mentionIndex * 1000 + match.index // unique key for mentions
+          });
+          foundFullMatch = true;
+        }
+        
+        // Reset regex for the shorter pattern check
+        const shortPattern = `@${mention.username}`;
+        const escapedShortPattern = shortPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const shortRegex = new RegExp(escapedShortPattern, 'g');
+        
+        // Only try the shorter pattern if we didn't find the full pattern
+        if (!foundFullMatch) {
+          while ((match = shortRegex.exec(processedContent)) !== null) {
             matches.push({
               index: match.index,
               length: match[0].length,
@@ -231,7 +246,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
               matchIndex: 20000 + mentionIndex * 1000 + match.index // unique key for mentions
             });
           }
-        });
+        }
       });
     }
     
