@@ -12,6 +12,12 @@ interface Account {
   display_name: string;
   avatar: string;
   url: string;
+  emojis?: Array<{
+    shortcode: string;
+    url: string;
+    static_url?: string;
+    visible_in_picker?: boolean;
+  }>;
 }
 
 interface MediaAttachment {
@@ -37,6 +43,12 @@ interface Status {
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
   sensitive: boolean;
+  emojis?: Array<{
+    shortcode: string;
+    url: string;
+    static_url?: string;
+    visible_in_picker?: boolean;
+  }>;
   media_attachments: MediaAttachment[];
   mentions: Array<{
     id: string;

@@ -3,6 +3,13 @@ import { DesktopWindow } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 
+interface CustomEmoji {
+  shortcode: string;
+  url: string;
+  static_url?: string;
+  visible_in_picker?: boolean;
+}
+
 interface UserData {
   id: string;
   username: string;
@@ -14,6 +21,7 @@ interface UserData {
   followers_count: number;
   following_count: number;
   statuses_count: number;
+  emojis?: CustomEmoji[];
 }
 
 interface UserProfileWindowProps {
@@ -89,6 +97,22 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
+  };
+
+  const processCustomEmoji = (content: string, emojis?: CustomEmoji[]) => {
+    if (!emojis || emojis.length === 0) {
+      return stripHtml(content);
+    }
+
+    let processedContent = stripHtml(content);
+    
+    emojis.forEach(emoji => {
+      const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
+      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em; width: auto; vertical-align: middle; display: inline;" />`;
+      processedContent = processedContent.replace(emojiPattern, emojiImg);
+    });
+
+    return processedContent;
   };
 
   return (
@@ -174,13 +198,16 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
                 }}
               />
               <div style={{ flex: 1 }}>
-                <div style={{ 
-                  fontWeight: 'bold', 
-                  fontSize: '14px',
-                  marginBottom: '4px' 
-                }}>
-                  {userProfile.display_name || userProfile.username}
-                </div>
+                <div 
+                  style={{ 
+                    fontWeight: 'bold', 
+                    fontSize: '14px',
+                    marginBottom: '4px' 
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: processCustomEmoji(userProfile.display_name || userProfile.username, userProfile.emojis)
+                  }}
+                />
                 <div style={{ 
                   color: '#000080',
                   marginBottom: '4px' 

@@ -22,11 +22,23 @@ interface Status {
     display_name: string;
     avatar: string;
     url: string;
+    emojis?: Array<{
+      shortcode: string;
+      url: string;
+      static_url?: string;
+      visible_in_picker?: boolean;
+    }>;
   };
   content: string;
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
   sensitive: boolean;
+  emojis?: Array<{
+    shortcode: string;
+    url: string;
+    static_url?: string;
+    visible_in_picker?: boolean;
+  }>;
   media_attachments: Array<{
     id: string;
     type: 'image' | 'video' | 'audio' | 'unknown';

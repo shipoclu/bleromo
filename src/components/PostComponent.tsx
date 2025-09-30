@@ -8,6 +8,7 @@ interface Account {
   display_name: string;
   avatar: string;
   url: string;
+  emojis?: CustomEmoji[];
 }
 
 interface MediaAttachment {
@@ -25,6 +26,13 @@ interface EmojiReaction {
   url?: string; // For custom emoji
 }
 
+interface CustomEmoji {
+  shortcode: string;
+  url: string;
+  static_url?: string;
+  visible_in_picker?: boolean;
+}
+
 interface Status {
   id: string;
   created_at: string;
@@ -34,6 +42,7 @@ interface Status {
   spoiler_text: string;
   sensitive: boolean;
   media_attachments: MediaAttachment[];
+  emojis?: CustomEmoji[];
   mentions: Array<{
     id: string;
     username: string;
@@ -166,6 +175,22 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
+  };
+
+  const processCustomEmoji = (content: string, emojis?: CustomEmoji[]) => {
+    if (!emojis || emojis.length === 0) {
+      return stripHtml(content);
+    }
+
+    let processedContent = stripHtml(content);
+    
+    emojis.forEach(emoji => {
+      const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
+      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em; width: auto; vertical-align: middle; display: inline;" />`;
+      processedContent = processedContent.replace(emojiPattern, emojiImg);
+    });
+
+    return processedContent;
   };
 
   const formatNumber = (num: number) => {
@@ -337,9 +362,10 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
               textDecoration: onUserClick ? 'underline' : 'none'
             }}
             onClick={() => onUserClick && onUserClick(status.account.id)}
-          >
-            {status.account.display_name || status.account.username}
-          </strong> 
+            dangerouslySetInnerHTML={{
+              __html: processCustomEmoji(status.account.display_name || status.account.username, status.account.emojis)
+            }}
+          /> 
           <span style={{ flexShrink: 0 }}>boosted</span>
         </div>
         
@@ -397,9 +423,10 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
                 textDecoration: onUserClick ? 'underline' : 'none'
               }}
               onClick={() => onUserClick && onUserClick(localStatus.account.id)}
-            >
-              {localStatus.account.display_name || localStatus.account.username}
-            </strong>
+              dangerouslySetInnerHTML={{
+                __html: processCustomEmoji(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis)
+              }}
+            />
             <span style={{ 
               color: '#808080',
               overflow: 'hidden',
@@ -435,12 +462,15 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
       )}
 
       {/* Post content */}
-      <div style={{
-        marginBottom: '8px',
-        lineHeight: '1.4'
-      }}>
-        {stripHtml(localStatus.content)}
-      </div>
+      <div 
+        style={{
+          marginBottom: '8px',
+          lineHeight: '1.4'
+        }}
+        dangerouslySetInnerHTML={{
+          __html: processCustomEmoji(localStatus.content, localStatus.emojis)
+        }}
+      />
 
       {/* Media attachments */}
       {localStatus.media_attachments.length > 0 && (

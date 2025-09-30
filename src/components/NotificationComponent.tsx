@@ -7,6 +7,14 @@ interface Account {
   display_name: string;
   avatar: string;
   url: string;
+  emojis?: CustomEmoji[];
+}
+
+interface CustomEmoji {
+  shortcode: string;
+  url: string;
+  static_url?: string;
+  visible_in_picker?: boolean;
 }
 
 interface Status {
@@ -16,6 +24,7 @@ interface Status {
   content: string;
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
+  emojis?: CustomEmoji[];
   media_attachments: Array<{
     id: string;
     type: 'image' | 'video' | 'audio' | 'unknown';
@@ -67,6 +76,22 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
+  };
+
+  const processCustomEmoji = (content: string, emojis?: CustomEmoji[]) => {
+    if (!emojis || emojis.length === 0) {
+      return stripHtml(content);
+    }
+
+    let processedContent = stripHtml(content);
+    
+    emojis.forEach(emoji => {
+      const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
+      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em; width: auto; vertical-align: middle; display: inline;" />`;
+      processedContent = processedContent.replace(emojiPattern, emojiImg);
+    });
+
+    return processedContent;
   };
 
   const getNotificationIcon = (type: string, emoji?: string) => {
@@ -153,9 +178,10 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
                 textDecoration: onUserClick ? 'underline' : 'none'
               }}
               onClick={() => onUserClick && onUserClick(notification.account.id)}
-            >
-              {notification.account.display_name || notification.account.username}
-            </strong>
+              dangerouslySetInnerHTML={{
+                __html: processCustomEmoji(notification.account.display_name || notification.account.username, notification.account.emojis)
+              }}
+            />
             <span style={{ color: '#808080' }}>@{notification.account.acct}</span>
             <span style={{ color: '#808080' }}>{getNotificationText(notification.type)}</span>
           </div>
@@ -192,12 +218,15 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
           )}
 
           {/* Post content */}
-          <div style={{
-            marginBottom: '8px',
-            lineHeight: '1.4'
-          }}>
-            {stripHtml(notification.status.content)}
-          </div>
+          <div 
+            style={{
+              marginBottom: '8px',
+              lineHeight: '1.4'
+            }}
+            dangerouslySetInnerHTML={{
+              __html: processCustomEmoji(notification.status.content, notification.status.emojis)
+            }}
+          />
 
           {/* Media attachments */}
           {notification.status.media_attachments.length > 0 && (
