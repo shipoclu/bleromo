@@ -36,9 +36,10 @@ interface Status {
 
 interface PostComponentProps {
   status: Status;
+  onImageClick?: (imageUrl: string, description?: string) => void;
 }
 
-const PostComponent: React.FC<PostComponentProps> = ({ status }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -84,7 +85,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status }) => {
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} />
       </div>
     );
   }
@@ -173,8 +174,10 @@ const PostComponent: React.FC<PostComponentProps> = ({ status }) => {
                     width: '100%',
                     height: '120px',
                     objectFit: 'cover',
-                    display: 'block'
+                    display: 'block',
+                    cursor: 'pointer'
                   }}
+                  onClick={() => onImageClick && onImageClick(media.url, media.description)}
                 />
               )}
               {media.type === 'video' && (

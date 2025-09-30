@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { TaskBar, useWindowManager } from 'wtkrjs';
 import { appState, loadStoredAuth, logout } from './store/appState';
@@ -6,9 +6,14 @@ import LoginWindow from './components/LoginWindow';
 import UserProfileWindow from './components/UserProfileWindow';
 import PublicTimelineWindow from './components/PublicTimelineWindow';
 import LocalTimelineWindow from './components/LocalTimelineWindow';
+import ImageViewerWindow from './components/ImageViewerWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
+  const [imageWindowData, setImageWindowData] = useState<Record<string, { imageUrl: string; imageDescription?: string; windowNumber: number }>>({});
+  const [imageWindowCounter, setImageWindowCounter] = useState(1);
+  const [taskbarKey, setTaskbarKey] = useState(0);
+  
   const {
     windows,
     focusWindow,
@@ -24,6 +29,8 @@ const App: React.FC = () => {
   useEffect(() => {
     loadStoredAuth();
   }, []);
+
+  // No automatic cleanup - let manual close handle everything
 
   const handleWindowSelect = (windowId: string) => {
     const window = windows.find((win: any) => win.id === windowId);
@@ -89,6 +96,48 @@ const App: React.FC = () => {
     }
   };
 
+  const openImageViewer = (imageUrl: string, description?: string) => {
+    // Create a unique ID based on MD5 hash of the image URL
+    const createHash = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash).toString(16);
+    };
+    const imageWindowId = `image-${createHash(imageUrl)}`;
+    const existingWindow = windows.find((win: any) => win.id === imageWindowId);
+    
+    if (existingWindow) {
+      // Always ensure image data is stored (in case it was cleaned up but window still exists)
+      setImageWindowData(prev => ({
+        ...prev,
+        [imageWindowId]: { imageUrl, imageDescription: description, windowNumber: prev[imageWindowId]?.windowNumber || imageWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: imageWindowId });
+      }
+      focusWindow({ id: imageWindowId });
+    } else {
+      // Store image data with new window number
+      const windowNumber = imageWindowCounter;
+      setImageWindowData(prev => ({
+        ...prev,
+        [imageWindowId]: { imageUrl, imageDescription: description, windowNumber }
+      }));
+      setImageWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: imageWindowId,
+        title: `Image Viewer ${windowNumber}`,
+        icon: <ImageIcon />
+      });
+    }
+  };
+
   const LogoutIcon = () => (
     <svg width="16" height="16" viewBox="0 0 16 16">
       <path d="M6,2 L6,6 L2,6 L7,11 L12,6 L8,6 L8,2 Z" fill="currentColor" />
@@ -118,6 +167,14 @@ const App: React.FC = () => {
       <rect x="2" y="10" width="10" height="2" fill="currentColor" />
       <rect x="2" y="14" width="6" height="2" fill="currentColor" />
       <circle cx="13" cy="7" r="2" fill="none" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  );
+
+  const ImageIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16">
+      <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1" />
+      <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+      <path d="M2,12 L5,9 L7,11 L11,7 L14,10 L14,14 L2,14 Z" fill="currentColor" />
     </svg>
   );
 
@@ -233,6 +290,7 @@ const App: React.FC = () => {
               isMinimized={win.isMinimized}
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
+              onImageClick={openImageViewer}
               onClose={() => removeWindow({ id: win.id })}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -252,7 +310,48 @@ const App: React.FC = () => {
               isMinimized={win.isMinimized}
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
+              onImageClick={openImageViewer}
               onClose={() => removeWindow({ id: win.id })}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('image-')) {
+          const imageData = imageWindowData[win.id];
+          if (!imageData) {
+            // Skip rendering if we don't have image data
+            return null;
+          }
+          
+          return (
+            <ImageViewerWindow
+              key={win.id}
+              id={win.id}
+              imageUrl={imageData.imageUrl}
+              imageDescription={imageData.imageDescription}
+              windowNumber={imageData.windowNumber}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                // Remove window from window manager first
+                removeWindow({ id: win.id });
+                // Force taskbar re-render to work around potential wtkrjs bug
+                setTaskbarKey(prev => prev + 1);
+                // Delay image data cleanup to let window manager finish
+                setTimeout(() => {
+                  setImageWindowData(prev => {
+                    const { [win.id]: removed, ...rest } = prev;
+                    return rest;
+                  });
+                }, 50);
+              }}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
@@ -267,6 +366,7 @@ const App: React.FC = () => {
       
       <div style={{ marginTop: 'auto' }}>
         <TaskBar
+          key={taskbarKey}
           windows={windows.map((win: any) => ({
             id: win.id,
             title: win.title,
