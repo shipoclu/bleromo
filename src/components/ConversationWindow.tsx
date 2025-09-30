@@ -30,6 +30,12 @@ interface Status {
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
   media_attachments: MediaAttachment[];
+  mentions: Array<{
+    id: string;
+    username: string;
+    acct: string;
+    url: string;
+  }>;
   replies_count: number;
   reblogs_count: number;
   favourites_count: number;
@@ -51,6 +57,7 @@ interface ConversationWindowProps {
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
+  onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -71,6 +78,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
   onVideoClick,
   onConversationClick,
   onUserClick,
+  onReplyClick,
   onClose,
   onFocus,
   onMinimize,
@@ -290,6 +298,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
                   onVideoClick={onVideoClick}
                   onConversationClick={onConversationClick}
                   onUserClick={onUserClick}
+                  onReplyClick={onReplyClick}
                 />
               </div>
               

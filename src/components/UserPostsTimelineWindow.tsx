@@ -26,6 +26,12 @@ interface Status {
     preview_url: string;
     description?: string;
   }>;
+  mentions: Array<{
+    id: string;
+    username: string;
+    acct: string;
+    url: string;
+  }>;
   replies_count: number;
   reblogs_count: number;
   favourites_count: number;
@@ -43,6 +49,7 @@ interface UserPostsTimelineWindowProps {
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
+  onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -64,6 +71,7 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
   onVideoClick,
   onConversationClick,
   onUserClick,
+  onReplyClick,
   onClose,
   onFocus,
   onMinimize,
@@ -280,7 +288,8 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
               onImageClick={onImageClick} 
               onVideoClick={onVideoClick} 
               onConversationClick={onConversationClick} 
-              onUserClick={onUserClick} 
+              onUserClick={onUserClick}
+              onReplyClick={onReplyClick}
             />
           ))}
 

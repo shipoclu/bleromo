@@ -26,6 +26,12 @@ interface Status {
     preview_url: string;
     description?: string;
   }>;
+  mentions: Array<{
+    id: string;
+    username: string;
+    acct: string;
+    url: string;
+  }>;
   replies_count: number;
   reblogs_count: number;
   favourites_count: number;
@@ -41,6 +47,7 @@ interface PublicTimelineWindowProps {
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
+  onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -60,6 +67,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
   onVideoClick,
   onConversationClick,
   onUserClick,
+  onReplyClick,
   onClose,
   onFocus,
   onMinimize,
@@ -261,7 +269,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} />
           ))}
 
           {/* Load more button */}

@@ -25,6 +25,12 @@ interface Status {
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
   media_attachments: MediaAttachment[];
+  mentions: Array<{
+    id: string;
+    username: string;
+    acct: string;
+    url: string;
+  }>;
   replies_count: number;
   reblogs_count: number;
   favourites_count: number;
@@ -40,6 +46,7 @@ interface PostComponentProps {
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
+  onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
 }
 
 const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> = ({ videoUrl, onVideoClick }) => {
@@ -91,7 +98,7 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick, onReplyClick }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -108,6 +115,30 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
+  };
+
+  const extractMentionHandles = (status: Status) => {
+    const handles: string[] = [];
+    
+    // Add the original poster
+    handles.push(status.account.acct || status.account.username);
+    
+    // Add all mentioned users from the API data
+    status.mentions.forEach(mention => {
+      const handle = mention.acct || mention.username;
+      if (!handles.includes(handle)) {
+        handles.push(handle);
+      }
+    });
+    
+    return handles;
+  };
+
+  const handleReplyClick = () => {
+    if (onReplyClick) {
+      const mentionHandles = extractMentionHandles(status);
+      onReplyClick(status.id, mentionHandles);
+    }
   };
 
   // If this is a boost/reblog, show the boost info and the original post
@@ -156,7 +187,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} />
       </div>
     );
   }
@@ -307,7 +338,15 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         borderTop: '1px solid #e0e0e0',
         paddingTop: '6px'
       }}>
-        <span data-replies-count>↩️ {formatNumber(status.replies_count)}</span>
+        <span 
+          data-replies-count
+          style={{ 
+            cursor: onReplyClick ? 'pointer' : 'default'
+          }}
+          onClick={handleReplyClick}
+        >
+          ↩️ {formatNumber(status.replies_count)}
+        </span>
         <span 
           data-reblogs-count
           style={{ color: status.reblogged ? '#008000' : '#808080' }}

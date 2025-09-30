@@ -13,6 +13,7 @@ import ImageViewerWindow from './components/ImageViewerWindow';
 import VideoViewerWindow from './components/VideoViewerWindow';
 import OtherUserProfileWindow from './components/OtherUserProfileWindow';
 import UserPostsTimelineWindow from './components/UserPostsTimelineWindow';
+import PostCompositionWindow from './components/PostCompositionWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -26,6 +27,8 @@ const App: React.FC = () => {
   const [userProfileWindowCounter, setUserProfileWindowCounter] = useState(1);
   const [userPostsTimelineWindowData, setUserPostsTimelineWindowData] = useState<Record<string, { userId: string; userAcct: string; windowNumber: number }>>({});
   const [userPostsTimelineWindowCounter, setUserPostsTimelineWindowCounter] = useState(1);
+  const [composeWindowData, setComposeWindowData] = useState<Record<string, { replyToStatusId?: string; mentionHandles?: string[]; windowNumber: number }>>({});
+  const [composeWindowCounter, setComposeWindowCounter] = useState(1);
   
   const {
     windows,
@@ -149,6 +152,42 @@ const App: React.FC = () => {
         id: userPostsTimelineWindowId,
         title: title,
         icon: <TimelineIcon />
+      });
+    }
+  };
+
+  const openComposeWindow = (replyToStatusId?: string, mentionHandles?: string[]) => {
+    // Create a unique ID based on reply status or use a generic compose ID
+    const composeWindowId = replyToStatusId ? `compose-reply-${replyToStatusId}` : 'compose-new';
+    const existingWindow = windows.find((win: any) => win.id === composeWindowId);
+    
+    if (existingWindow) {
+      // Always ensure compose data is stored
+      setComposeWindowData(prev => ({
+        ...prev,
+        [composeWindowId]: { replyToStatusId, mentionHandles, windowNumber: prev[composeWindowId]?.windowNumber || composeWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: composeWindowId });
+      }
+      focusWindow({ id: composeWindowId });
+    } else {
+      // Store compose data with new window number
+      const windowNumber = composeWindowCounter;
+      setComposeWindowData(prev => ({
+        ...prev,
+        [composeWindowId]: { replyToStatusId, mentionHandles, windowNumber }
+      }));
+      setComposeWindowCounter(prev => prev + 1);
+      
+      // Create title for window
+      const title = replyToStatusId ? 'Reply to Post' : 'Compose Post';
+      
+      addWindow({
+        id: composeWindowId,
+        title: title,
+        icon: <ComposeIcon />
       });
     }
   };
@@ -381,6 +420,10 @@ const App: React.FC = () => {
     <img src="/directory_closed-0.png" alt="Conversation" width="16" height="16" />
   );
 
+  const ComposeIcon = () => (
+    <img src="/directory_closed-0.png" alt="Compose" width="16" height="16" />
+  );
+
   const StartIcon = () => (
     <img 
       src="/pleroma-logo.svg" 
@@ -431,9 +474,8 @@ const App: React.FC = () => {
     {
       type: 'item' as const,
       text: 'Compose',
-      onClick: () => {
-        console.log('Compose clicked - feature coming soon');
-      }
+      icon: <ComposeIcon />,
+      onClick: () => openComposeWindow()
     },
     {
       type: 'separator' as const
@@ -507,6 +549,7 @@ const App: React.FC = () => {
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
+              onReplyClick={openComposeWindow}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -530,6 +573,7 @@ const App: React.FC = () => {
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
+              onReplyClick={openComposeWindow}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -553,6 +597,7 @@ const App: React.FC = () => {
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
+              onReplyClick={openComposeWindow}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -576,6 +621,7 @@ const App: React.FC = () => {
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
+              onReplyClick={openComposeWindow}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -606,6 +652,7 @@ const App: React.FC = () => {
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
+              onReplyClick={openComposeWindow}
               onClose={() => {
                 // Clean up conversation data when window is closed
                 setConversationWindowData(prev => {
@@ -752,9 +799,45 @@ const App: React.FC = () => {
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
+              onReplyClick={openComposeWindow}
               onClose={() => {
                 // Clean up user posts timeline data when window is closed
                 setUserPostsTimelineWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('compose-') || win.id === 'compose-new') {
+          const composeData = composeWindowData[win.id];
+          if (!composeData) {
+            // Skip rendering if we don't have compose data
+            return null;
+          }
+          
+          return (
+            <PostCompositionWindow
+              key={win.id}
+              id={win.id}
+              replyToStatusId={composeData.replyToStatusId}
+              mentionHandles={composeData.mentionHandles}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                // Clean up compose data when window is closed
+                setComposeWindowData(prev => {
                   const { [win.id]: removed, ...rest } = prev;
                   return rest;
                 });
