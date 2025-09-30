@@ -6,6 +6,7 @@ import LoginWindow from './components/LoginWindow';
 import UserProfileWindow from './components/UserProfileWindow';
 import PublicTimelineWindow from './components/PublicTimelineWindow';
 import LocalTimelineWindow from './components/LocalTimelineWindow';
+import NotificationsWindow from './components/NotificationsWindow';
 import ImageViewerWindow from './components/ImageViewerWindow';
 import VideoViewerWindow from './components/VideoViewerWindow';
 
@@ -94,6 +95,24 @@ const App: React.FC = () => {
         id: timelineWindowId,
         title: 'Local Timeline',
         icon: <LocalTimelineIcon />
+      });
+    }
+  };
+
+  const openNotifications = () => {
+    const notificationsWindowId = 'notifications';
+    const existingWindow = windows.find((win: any) => win.id === notificationsWindowId);
+    
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: notificationsWindowId });
+      }
+      focusWindow({ id: notificationsWindowId });
+    } else {
+      addWindow({
+        id: notificationsWindowId,
+        title: 'Notifications',
+        icon: <NotificationIcon />
       });
     }
   };
@@ -210,6 +229,10 @@ const App: React.FC = () => {
     <img src="/camera3-4.png" alt="Video" width="16" height="16" />
   );
 
+  const NotificationIcon = () => (
+    <img src="/file_lines-0.png" alt="Notifications" width="16" height="16" />
+  );
+
   const StartIcon = () => (
     <img 
       src="/pleroma-logo.svg" 
@@ -248,9 +271,8 @@ const App: React.FC = () => {
     {
       type: 'item' as const,
       text: 'Notifications',
-      onClick: () => {
-        console.log('Notifications clicked - feature coming soon');
-      }
+      icon: <NotificationIcon />,
+      onClick: openNotifications
     },
     {
       type: 'item' as const,
@@ -342,6 +364,27 @@ const App: React.FC = () => {
         if (win.id === 'local-timeline') {
           return (
             <LocalTimelineWindow
+              key={win.id}
+              id={win.id}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onImageClick={openImageViewer}
+              onVideoClick={openVideoViewer}
+              onClose={() => removeWindow(win.id)}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id === 'notifications') {
+          return (
+            <NotificationsWindow
               key={win.id}
               id={win.id}
               isFocused={win.isFocused}
