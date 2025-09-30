@@ -177,37 +177,70 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     return div.textContent || div.innerText || '';
   }, []);
 
-  const processCustomEmojiToElements = useCallback((content: string, emojis?: CustomEmoji[]): React.ReactNode[] => {
-    if (!emojis || emojis.length === 0) {
-      return [stripHtml(content)];
-    }
-
+  const processPostContentToElements = useCallback((content: string, emojis?: CustomEmoji[], mentions?: Array<{id: string; username: string; acct: string; url: string}>, onUserClick?: (userId: string) => void): React.ReactNode[] => {
     let processedContent = stripHtml(content);
     const parts: React.ReactNode[] = [];
     
-    // Create a map of all emoji patterns and their positions
-    const emojiMatches: Array<{ index: number; length: number; emoji: CustomEmoji; matchIndex: number }> = [];
+    // Create a map of all patterns (emoji and mentions) and their positions
+    const matches: Array<{ 
+      index: number; 
+      length: number; 
+      type: 'emoji' | 'mention'; 
+      data: CustomEmoji | {id: string; username: string; acct: string; url: string}; 
+      matchIndex: number 
+    }> = [];
     
-    emojis.forEach((emoji, emojiIndex) => {
-      const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
-      let match;
-      
-      while ((match = emojiPattern.exec(processedContent)) !== null) {
-        emojiMatches.push({
-          index: match.index,
-          length: match[0].length,
-          emoji: emoji,
-          matchIndex: emojiIndex * 1000 + match.index // unique key
+    // Find emoji patterns
+    if (emojis && emojis.length > 0) {
+      emojis.forEach((emoji, emojiIndex) => {
+        const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
+        let match;
+        
+        while ((match = emojiPattern.exec(processedContent)) !== null) {
+          matches.push({
+            index: match.index,
+            length: match[0].length,
+            type: 'emoji',
+            data: emoji,
+            matchIndex: emojiIndex * 10000 + match.index // unique key for emoji
+          });
+        }
+      });
+    }
+    
+    // Find mention patterns using the mentions array from the API
+    if (mentions && mentions.length > 0) {
+      mentions.forEach((mention, mentionIndex) => {
+        // Try to match @username and @username@domain patterns
+        const patterns = [
+          `@${mention.username}`,
+          `@${mention.acct}`
+        ];
+        
+        patterns.forEach(pattern => {
+          const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const mentionRegex = new RegExp(escapedPattern, 'g');
+          let match;
+          
+          while ((match = mentionRegex.exec(processedContent)) !== null) {
+            matches.push({
+              index: match.index,
+              length: match[0].length,
+              type: 'mention',
+              data: mention,
+              matchIndex: 20000 + mentionIndex * 1000 + match.index // unique key for mentions
+            });
+          }
         });
-      }
-    });
+      });
+    }
     
     // Sort matches by position
-    emojiMatches.sort((a, b) => a.index - b.index);
+    matches.sort((a, b) => a.index - b.index);
     
     let lastIndex = 0;
-    emojiMatches.forEach((match) => {
-      // Add text before emoji
+    matches.forEach((match) => {
+      // Add text before this match
       if (match.index > lastIndex) {
         const textPart = processedContent.slice(lastIndex, match.index);
         if (textPart) {
@@ -215,23 +248,50 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         }
       }
       
-      // Add emoji as React element
-      parts.push(
-        <img 
-          key={`emoji-${match.matchIndex}`}
-          src={match.emoji.url} 
-          alt={`:${match.emoji.shortcode}:`}
-          style={{
-            height: '1.2em',
-            width: 'auto',
-            verticalAlign: 'middle',
-            display: 'inline',
-            opacity: 1,
-            visibility: 'visible',
-            transform: 'none'
-          }}
-        />
-      );
+      if (match.type === 'emoji') {
+        // Add emoji as React element
+        const emoji = match.data as CustomEmoji;
+        parts.push(
+          <img 
+            key={`emoji-${match.matchIndex}`}
+            src={emoji.url} 
+            alt={`:${emoji.shortcode}:`}
+            style={{
+              height: '1.2em',
+              width: 'auto',
+              verticalAlign: 'middle',
+              display: 'inline',
+              opacity: 1,
+              visibility: 'visible',
+              transform: 'none'
+            }}
+          />
+        );
+      } else if (match.type === 'mention') {
+        // Add mention as clickable React element
+        const mention = match.data as {id: string; username: string; acct: string; url: string};
+        const fullMention = processedContent.slice(match.index, match.index + match.length);
+        
+        parts.push(
+          <span
+            key={`mention-${match.matchIndex}`}
+            style={{
+              color: 'var(--win98-help-green)',
+              textDecoration: onUserClick ? 'underline' : 'none',
+              cursor: onUserClick ? 'pointer' : 'default'
+            }}
+            onClick={() => {
+              if (onUserClick) {
+                // Use the actual user ID from the mention object
+                onUserClick(mention.id);
+              }
+            }}
+            title={`View profile of @${mention.acct}`}
+          >
+            {fullMention}
+          </span>
+        );
+      }
       
       lastIndex = match.index + match.length;
     });
@@ -249,19 +309,19 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
 
   // Memoize processed content to avoid re-processing during re-renders
   const processedDisplayName = useMemo(() => {
-    return processCustomEmojiToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis);
-  }, [localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processCustomEmojiToElements]);
+    return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick);
+  }, [localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick]);
 
   const processedContent = useMemo(() => {
-    return processCustomEmojiToElements(localStatus.content, localStatus.emojis);
-  }, [localStatus.content, localStatus.emojis, processCustomEmojiToElements]);
+    return processPostContentToElements(localStatus.content, localStatus.emojis, localStatus.mentions, onUserClick);
+  }, [localStatus.content, localStatus.emojis, localStatus.mentions, processPostContentToElements, onUserClick]);
 
   const processedReblogDisplayName = useMemo(() => {
     if (localStatus.reblog) {
-      return processCustomEmojiToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis);
+      return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick);
     }
     return [];
-  }, [localStatus.reblog, localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processCustomEmojiToElements]);
+  }, [localStatus.reblog, localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick]);
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
