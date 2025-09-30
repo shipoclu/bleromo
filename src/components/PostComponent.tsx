@@ -39,6 +39,7 @@ interface PostComponentProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
+  onUserClick?: (userId: string) => void;
 }
 
 const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> = ({ videoUrl, onVideoClick }) => {
@@ -90,7 +91,7 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -137,20 +138,25 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
             <path d="M1 8l4-4v3h5.5a2.5 2.5 0 010 5H9v-2h1.5a.5.5 0 000-1H5v3l-4-4zM15 8l-4 4V9H5.5a2.5 2.5 0 010-5H7v2H5.5a.5.5 0 000 1H11V4l4 4z"/>
           </svg>
-          <strong style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flexShrink: 1,
-            minWidth: 0
-          }}>
+          <strong 
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flexShrink: 1,
+              minWidth: 0,
+              cursor: onUserClick ? 'pointer' : 'default',
+              textDecoration: onUserClick ? 'underline' : 'none'
+            }}
+            onClick={() => onUserClick && onUserClick(status.account.id)}
+          >
             {status.account.display_name || status.account.username}
           </strong> 
           <span style={{ flexShrink: 0 }}>boosted</span>
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} />
       </div>
     );
   }
@@ -192,13 +198,18 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
             marginBottom: '2px',
             overflow: 'hidden'
           }}>
-            <strong style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              flexShrink: 1,
-              minWidth: 0
-            }}>
+            <strong 
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                flexShrink: 1,
+                minWidth: 0,
+                cursor: onUserClick ? 'pointer' : 'default',
+                textDecoration: onUserClick ? 'underline' : 'none'
+              }}
+              onClick={() => onUserClick && onUserClick(status.account.id)}
+            >
               {status.account.display_name || status.account.username}
             </strong>
             <span style={{ 

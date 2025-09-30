@@ -51,6 +51,7 @@ interface NotificationsWindowProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
+  onUserClick?: (userId: string) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -69,6 +70,7 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
   onImageClick,
   onVideoClick,
   onConversationClick,
+  onUserClick,
   onClose,
   onFocus,
   onMinimize,
@@ -315,6 +317,7 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
               onImageClick={onImageClick} 
               onVideoClick={onVideoClick}
               onConversationClick={onConversationClick}
+              onUserClick={onUserClick}
             />
           ))}
 

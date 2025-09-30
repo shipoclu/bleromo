@@ -40,6 +40,7 @@ interface PublicTimelineWindowProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
+  onUserClick?: (userId: string) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -58,6 +59,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
   onImageClick,
   onVideoClick,
   onConversationClick,
+  onUserClick,
   onClose,
   onFocus,
   onMinimize,
@@ -259,7 +261,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} />
           ))}
 
           {/* Load more button */}

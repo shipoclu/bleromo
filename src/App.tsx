@@ -11,6 +11,7 @@ import NotificationsWindow from './components/NotificationsWindow';
 import ConversationWindow from './components/ConversationWindow';
 import ImageViewerWindow from './components/ImageViewerWindow';
 import VideoViewerWindow from './components/VideoViewerWindow';
+import OtherUserProfileWindow from './components/OtherUserProfileWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -20,6 +21,8 @@ const App: React.FC = () => {
   const [videoWindowCounter, setVideoWindowCounter] = useState(1);
   const [conversationWindowData, setConversationWindowData] = useState<Record<string, { statusId: string; windowNumber: number }>>({});
   const [conversationWindowCounter, setConversationWindowCounter] = useState(1);
+  const [userProfileWindowData, setUserProfileWindowData] = useState<Record<string, { userId: string; windowNumber: number }>>({});
+  const [userProfileWindowCounter, setUserProfileWindowCounter] = useState(1);
   
   const {
     windows,
@@ -49,7 +52,7 @@ const App: React.FC = () => {
     }
   };
 
-  const openUserProfile = () => {
+  const openOwnUserProfile = () => {
     const profileWindowId = 'user-profile';
     const existingWindow = windows.find((win: any) => win.id === profileWindowId);
     
@@ -62,6 +65,38 @@ const App: React.FC = () => {
       addWindow({
         id: profileWindowId,
         title: 'User Profile',
+        icon: <UserIcon />
+      });
+    }
+  };
+
+  const openUserProfile = (userId: string) => {
+    const userProfileWindowId = `user-profile-${userId}`;
+    const existingWindow = windows.find((win: any) => win.id === userProfileWindowId);
+    
+    if (existingWindow) {
+      // Always ensure user profile data is stored
+      setUserProfileWindowData(prev => ({
+        ...prev,
+        [userProfileWindowId]: { userId, windowNumber: prev[userProfileWindowId]?.windowNumber || userProfileWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: userProfileWindowId });
+      }
+      focusWindow({ id: userProfileWindowId });
+    } else {
+      // Store user profile data with new window number
+      const windowNumber = userProfileWindowCounter;
+      setUserProfileWindowData(prev => ({
+        ...prev,
+        [userProfileWindowId]: { userId, windowNumber }
+      }));
+      setUserProfileWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: userProfileWindowId,
+        title: `User Profile ${windowNumber}`,
         icon: <UserIcon />
       });
     }
@@ -313,7 +348,7 @@ const App: React.FC = () => {
       type: 'item' as const,
       text: snap.userData?.display_name || snap.userHandle || 'Unknown User',
       icon: <UserIcon />,
-      onClick: openUserProfile
+      onClick: openOwnUserProfile
     },
     {
       type: 'separator' as const
@@ -420,6 +455,7 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
+              onUserClick={openUserProfile}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -442,6 +478,7 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
+              onUserClick={openUserProfile}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -464,6 +501,7 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
+              onUserClick={openUserProfile}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -486,6 +524,7 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
+              onUserClick={openUserProfile}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -515,6 +554,7 @@ const App: React.FC = () => {
               onImageClick={openImageViewer}
               onVideoClick={openVideoViewer}
               onConversationClick={openConversation}
+              onUserClick={openUserProfile}
               onClose={() => {
                 // Clean up conversation data when window is closed
                 setConversationWindowData(prev => {
@@ -590,6 +630,40 @@ const App: React.FC = () => {
               onClose={() => {
                 // Clean up video data when window is closed
                 setVideoWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('user-profile-')) {
+          const userProfileData = userProfileWindowData[win.id];
+          if (!userProfileData) {
+            // Skip rendering if we don't have user profile data
+            return null;
+          }
+          
+          return (
+            <OtherUserProfileWindow
+              key={win.id}
+              id={win.id}
+              userId={userProfileData.userId}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                // Clean up user profile data when window is closed
+                setUserProfileWindowData(prev => {
                   const { [win.id]: removed, ...rest } = prev;
                   return rest;
                 });

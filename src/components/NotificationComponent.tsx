@@ -46,13 +46,15 @@ interface NotificationComponentProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
+  onUserClick?: (userId: string) => void;
 }
 
 const NotificationComponent: React.FC<NotificationComponentProps> = ({ 
   notification, 
   onImageClick, 
   onVideoClick,
-  onConversationClick
+  onConversationClick,
+  onUserClick
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -143,7 +145,15 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
             marginBottom: '2px'
           }}>
             <span style={{ fontSize: '14px' }}>{getNotificationIcon(notification.type, notification.emoji)}</span>
-            <strong>{notification.account.display_name || notification.account.username}</strong>
+            <strong 
+              style={{ 
+                cursor: onUserClick ? 'pointer' : 'default',
+                textDecoration: onUserClick ? 'underline' : 'none'
+              }}
+              onClick={() => onUserClick && onUserClick(notification.account.id)}
+            >
+              {notification.account.display_name || notification.account.username}
+            </strong>
             <span style={{ color: '#808080' }}>@{notification.account.acct}</span>
             <span style={{ color: '#808080' }}>{getNotificationText(notification.type)}</span>
           </div>

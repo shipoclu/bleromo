@@ -50,6 +50,7 @@ interface ConversationWindowProps {
   onImageClick?: (imageUrl: string, description?: string) => void;
   onVideoClick?: (videoUrl: string, description?: string) => void;
   onConversationClick?: (statusId: string) => void;
+  onUserClick?: (userId: string) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -69,6 +70,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
   onImageClick,
   onVideoClick,
   onConversationClick,
+  onUserClick,
   onClose,
   onFocus,
   onMinimize,
@@ -287,6 +289,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
                   onImageClick={onImageClick} 
                   onVideoClick={onVideoClick}
                   onConversationClick={onConversationClick}
+                  onUserClick={onUserClick}
                 />
               </div>
               
