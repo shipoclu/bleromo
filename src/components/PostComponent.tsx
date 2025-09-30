@@ -429,7 +429,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
               flexShrink: 1,
               minWidth: 0,
               cursor: onUserClick ? 'pointer' : 'default',
-              textDecoration: onUserClick ? 'underline' : 'none'
+              textDecoration: onUserClick ? 'underline' : 'none',
+              color: onUserClick ? 'var(--win98-help-green)' : 'inherit'
             }}
             onClick={() => onUserClick && onUserClick(status.account.id)}
           >
@@ -489,7 +490,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
                 flexShrink: 1,
                 minWidth: 0,
                 cursor: onUserClick ? 'pointer' : 'default',
-                textDecoration: onUserClick ? 'underline' : 'none'
+                textDecoration: onUserClick ? 'underline' : 'none',
+                color: onUserClick ? 'var(--win98-help-green)' : 'inherit'
               }}
               onClick={() => onUserClick && onUserClick(localStatus.account.id)}
             >

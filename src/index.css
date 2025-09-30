@@ -1,3 +1,8 @@
+/* CSS Variables for Windows 98 Theme */
+:root {
+  --win98-help-green: #008000;
+}
+
 /* CSS Reset for wtkrjs compatibility */
 *, *::before, *::after {
   box-sizing: border-box;
