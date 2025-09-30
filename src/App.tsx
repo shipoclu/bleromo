@@ -7,11 +7,14 @@ import UserProfileWindow from './components/UserProfileWindow';
 import PublicTimelineWindow from './components/PublicTimelineWindow';
 import LocalTimelineWindow from './components/LocalTimelineWindow';
 import ImageViewerWindow from './components/ImageViewerWindow';
+import VideoViewerWindow from './components/VideoViewerWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
   const [imageWindowData, setImageWindowData] = useState<Record<string, { imageUrl: string; imageDescription?: string; windowNumber: number }>>({});
   const [imageWindowCounter, setImageWindowCounter] = useState(1);
+  const [videoWindowData, setVideoWindowData] = useState<Record<string, { videoUrl: string; videoDescription?: string; windowNumber: number }>>({});
+  const [videoWindowCounter, setVideoWindowCounter] = useState(1);
   
   const {
     windows,
@@ -137,6 +140,52 @@ const App: React.FC = () => {
     }
   };
 
+  const openVideoViewer = (videoUrl: string, description?: string) => {
+    console.log('openVideoViewer called with:', videoUrl, description);
+    // Create a unique ID based on hash of the video URL
+    const createHash = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash).toString(16);
+    };
+    const videoWindowId = `video-${createHash(videoUrl)}`;
+    console.log('Video window ID:', videoWindowId);
+    const existingWindow = windows.find((win: any) => win.id === videoWindowId);
+    
+    if (existingWindow) {
+      console.log('Existing video window found, focusing');
+      // Always ensure video data is stored (in case it was cleaned up but window still exists)
+      setVideoWindowData(prev => ({
+        ...prev,
+        [videoWindowId]: { videoUrl, videoDescription: description, windowNumber: prev[videoWindowId]?.windowNumber || videoWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: videoWindowId });
+      }
+      focusWindow({ id: videoWindowId });
+    } else {
+      console.log('Creating new video window');
+      // Store video data with new window number
+      const windowNumber = videoWindowCounter;
+      setVideoWindowData(prev => ({
+        ...prev,
+        [videoWindowId]: { videoUrl, videoDescription: description, windowNumber }
+      }));
+      setVideoWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: videoWindowId,
+        title: `Video Player ${windowNumber}`,
+        icon: <VideoIcon />
+      });
+    }
+  };
+
   const LogoutIcon = () => (
     <img src="/users_key-4.png" alt="Logout" width="16" height="16" />
   );
@@ -155,6 +204,10 @@ const App: React.FC = () => {
 
   const ImageIcon = () => (
     <img src="/camera3-4.png" alt="Image" width="16" height="16" />
+  );
+
+  const VideoIcon = () => (
+    <img src="/camera3-4.png" alt="Video" width="16" height="16" />
   );
 
   const StartIcon = () => (
@@ -275,6 +328,7 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
+              onVideoClick={openVideoViewer}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -295,6 +349,7 @@ const App: React.FC = () => {
               isMaximized={win.isMaximized}
               zIndex={win.zIndex}
               onImageClick={openImageViewer}
+              onVideoClick={openVideoViewer}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -326,6 +381,42 @@ const App: React.FC = () => {
               onClose={() => {
                 // Clean up image data when window is closed
                 setImageWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('video-')) {
+          const videoData = videoWindowData[win.id];
+          if (!videoData) {
+            // Skip rendering if we don't have video data
+            return null;
+          }
+          
+          return (
+            <VideoViewerWindow
+              key={win.id}
+              id={win.id}
+              videoUrl={videoData.videoUrl}
+              videoDescription={videoData.videoDescription}
+              windowNumber={videoData.windowNumber}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                // Clean up video data when window is closed
+                setVideoWindowData(prev => {
                   const { [win.id]: removed, ...rest } = prev;
                   return rest;
                 });

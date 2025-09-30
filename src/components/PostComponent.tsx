@@ -37,9 +37,10 @@ interface Status {
 interface PostComponentProps {
   status: Status;
   onImageClick?: (imageUrl: string, description?: string) => void;
+  onVideoClick?: (videoUrl: string, description?: string) => void;
 }
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -85,7 +86,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick }) =
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} />
       </div>
     );
   }
@@ -181,16 +182,41 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick }) =
                 />
               )}
               {media.type === 'video' && (
-                <video 
-                  src={media.url}
-                  poster={media.preview_url}
-                  controls
+                <div
                   style={{
                     width: '100%',
                     height: '120px',
-                    objectFit: 'cover'
+                    position: 'relative',
+                    cursor: 'pointer',
+                    backgroundImage: media.preview_url ? `url(${media.preview_url})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundColor: '#f0f0f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
-                />
+                  onClick={() => {
+                    console.log('Video clicked:', media.url, media.description);
+                    console.log('onVideoClick function exists:', !!onVideoClick);
+                    onVideoClick && onVideoClick(media.url, media.description);
+                  }}
+                >
+                  {/* Play button overlay */}
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '20px'
+                  }}>
+                    ▶
+                  </div>
+                </div>
               )}
               {media.type === 'audio' && (
                 <div style={{

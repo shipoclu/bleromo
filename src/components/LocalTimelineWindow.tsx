@@ -37,6 +37,7 @@ interface Status {
 interface LocalTimelineWindowProps {
   id: string;
   onImageClick?: (imageUrl: string, description?: string) => void;
+  onVideoClick?: (videoUrl: string, description?: string) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -53,6 +54,7 @@ interface LocalTimelineWindowProps {
 const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
   id,
   onImageClick,
+  onVideoClick,
   onClose,
   onFocus,
   onMinimize,
@@ -248,7 +250,7 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} />
           ))}
 
           {/* Load more button */}
