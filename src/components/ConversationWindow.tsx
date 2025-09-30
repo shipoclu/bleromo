@@ -192,6 +192,31 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
     };
   };
 
+  const handleReblogClick = async (statusId: string, currentlyReblogged: boolean): Promise<{ reblogged: boolean; reblogs_count: number }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReblogged ? 'unreblog' : 'reblog';
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return {
+      reblogged: updatedStatus.reblogged,
+      reblogs_count: updatedStatus.reblogs_count
+    };
+  };
+
   return (
     <DesktopWindow
       id={id}
@@ -325,6 +350,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
                   onUserClick={onUserClick}
                   onReplyClick={onReplyClick}
                   onFavoriteClick={handleFavoriteClick}
+                  onReblogClick={handleReblogClick}
                 />
               </div>
               

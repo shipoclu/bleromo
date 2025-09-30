@@ -186,6 +186,31 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
     };
   };
 
+  const handleReblogClick = async (statusId: string, currentlyReblogged: boolean): Promise<{ reblogged: boolean; reblogs_count: number }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReblogged ? 'unreblog' : 'reblog';
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return {
+      reblogged: updatedStatus.reblogged,
+      reblogs_count: updatedStatus.reblogs_count
+    };
+  };
+
   useEffect(() => {
     fetchTimeline();
   }, []);
@@ -295,7 +320,7 @@ const LocalTimelineWindow: React.FC<LocalTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} />
           ))}
 
           {/* Load more button */}

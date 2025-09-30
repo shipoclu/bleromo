@@ -185,6 +185,59 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
     };
   };
 
+  const handleReblogClick = async (statusId: string, currentlyReblogged: boolean): Promise<{ reblogged: boolean; reblogs_count: number }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReblogged ? 'unreblog' : 'reblog';
+    console.log(`🔄 API Call: ${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`);
+    
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    console.log(`🔄 Full API response for ${endpoint}:`, updatedStatus);
+    
+    // The reblog API might return the reblog post itself, not the original with updated counts
+    // We need to check if this is a reblog response and handle accordingly
+    if (updatedStatus.reblog && updatedStatus.reblog.id === statusId) {
+      // This is a reblog response - use the original post's data from the reblog
+      console.log('🔄 Response is a reblog, using reblog.reblogs_count:', updatedStatus.reblog.reblogs_count);
+      return {
+        reblogged: true,
+        reblogs_count: updatedStatus.reblog.reblogs_count
+      };
+    } else if (endpoint === 'reblog') {
+      // For reblog, if we don't get proper count, we should increment manually
+      const currentPost = statuses.find(s => s.id === statusId);
+      const newCount = updatedStatus.reblogs_count > 0 ? updatedStatus.reblogs_count : (currentPost ? currentPost.reblogs_count + 1 : 1);
+      console.log('🔄 Reblog successful, count:', newCount);
+      return {
+        reblogged: true,
+        reblogs_count: newCount
+      };
+    } else {
+      // This should be unreblog
+      const currentPost = statuses.find(s => s.id === statusId);
+      const newCount = updatedStatus.reblogs_count >= 0 ? updatedStatus.reblogs_count : Math.max(0, (currentPost ? currentPost.reblogs_count - 1 : 0));
+      console.log('🔄 Unreblog successful, count:', newCount);
+      return {
+        reblogged: false,
+        reblogs_count: newCount
+      };
+    }
+  };
+
   useEffect(() => {
     fetchTimeline();
   }, []);
@@ -294,7 +347,7 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} />
           ))}
 
           {/* Load more button */}

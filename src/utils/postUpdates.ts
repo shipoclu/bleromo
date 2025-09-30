@@ -81,7 +81,7 @@ export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: st
       const reblogsElement = postElement.querySelector('[data-reblogs-count]') as HTMLElement;
       if (reblogsElement) {
         reblogsElement.textContent = `🔄 ${formatNumber(status.reblogs_count)}`;
-        reblogsElement.style.color = status.reblogged ? '#008000' : '#808080';
+        reblogsElement.style.color = status.reblogged ? '#ff0000' : '#808080';
       }
 
       // Update favourites count and color

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { updatePostEngagementCounts } from '../utils/postUpdates';
 
 interface Account {
   id: string;
@@ -48,6 +49,7 @@ interface PostComponentProps {
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onFavoriteClick?: (statusId: string, currentlyFavorited: boolean) => Promise<{ favourited: boolean; favourites_count: number }>;
+  onReblogClick?: (statusId: string, currentlyReblogged: boolean) => Promise<{ reblogged: boolean; reblogs_count: number }>;
 }
 
 const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> = ({ videoUrl, onVideoClick }) => {
@@ -99,9 +101,10 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick }) => {
   const [localStatus, setLocalStatus] = useState(status);
   const [isFavoriting, setIsFavoriting] = useState(false);
+  const [isReblogging, setIsReblogging] = useState(false);
 
   // Update local status when prop changes
   useEffect(() => {
@@ -155,15 +158,47 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     setIsFavoriting(true);
     try {
       const result = await onFavoriteClick(localStatus.id, localStatus.favourited);
-      setLocalStatus(prev => ({
-        ...prev,
+      
+      const updatedStatus = {
+        ...localStatus,
         favourited: result.favourited,
         favourites_count: result.favourites_count
-      }));
+      };
+      
+      setLocalStatus(updatedStatus);
+      
+      // Update all instances of this post across windows
+      updatePostEngagementCounts([updatedStatus], 'PostComponent');
     } catch (error) {
       console.error('Error toggling favorite:', error);
     } finally {
       setIsFavoriting(false);
+    }
+  };
+
+  const handleReblogClick = async () => {
+    if (!onReblogClick || isReblogging) return;
+
+    console.log('🔄 Reblog clicked for post:', localStatus.id, 'currently reblogged:', localStatus.reblogged);
+    setIsReblogging(true);
+    try {
+      const result = await onReblogClick(localStatus.id, localStatus.reblogged);
+      console.log('🔄 Reblog API result:', result);
+      
+      const updatedStatus = {
+        ...localStatus,
+        reblogged: result.reblogged,
+        reblogs_count: result.reblogs_count
+      };
+      
+      setLocalStatus(updatedStatus);
+      
+      // Update all instances of this post across windows
+      updatePostEngagementCounts([updatedStatus], 'PostComponent');
+    } catch (error) {
+      console.error('Error toggling reblog:', error);
+    } finally {
+      setIsReblogging(false);
     }
   };
 
@@ -213,7 +248,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={onFavoriteClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onFavoriteClick={onFavoriteClick} onReblogClick={onReblogClick} />
       </div>
     );
   }
@@ -375,7 +410,12 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </span>
         <span 
           data-reblogs-count
-          style={{ color: localStatus.reblogged ? '#008000' : '#808080' }}
+          style={{ 
+            color: localStatus.reblogged ? '#ff0000' : '#808080',
+            cursor: onReblogClick ? 'pointer' : 'default',
+            opacity: isReblogging ? 0.5 : 1
+          }}
+          onClick={handleReblogClick}
         >
           🔄 {formatNumber(localStatus.reblogs_count)}
         </span>
