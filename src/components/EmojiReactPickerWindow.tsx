@@ -7,7 +7,7 @@ import { appState } from '../store/appState';
 const customEmojiCache = new Map<string, CustomEmoji>();
 const customEmojiCacheTimestamp = new Map<string, number>();
 const customEmojiImageCache = new Map<string, string>(); // Cache for image URLs -> blob URLs
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const CACHE_DURATION = 5 * 24 * 60 * 60 * 1000; // 5 days
 
 // Function to preload and cache emoji images
 const preloadEmojiImages = async (serverUrl: string, emojiData: CustomEmoji) => {
