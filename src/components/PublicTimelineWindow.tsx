@@ -5,6 +5,13 @@ import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
 
+interface EmojiReaction {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string;
+}
+
 interface Status {
   id: string;
   created_at: string;
@@ -52,6 +59,11 @@ interface Status {
   favourited: boolean;
   reblog?: Status;
   url: string;
+  emoji_reactions?: EmojiReaction[];
+  pleroma?: {
+    emoji_reactions?: EmojiReaction[];
+    [key: string]: any;
+  };
 }
 
 interface PublicTimelineWindowProps {
@@ -179,6 +191,116 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
     }
   };
 
+  const handleFavoriteClick = async (statusId: string, currentlyFavorited: boolean): Promise<{ favourited: boolean; favourites_count: number }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyFavorited ? 'unfavourite' : 'favourite';
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return {
+      favourited: updatedStatus.favourited,
+      favourites_count: updatedStatus.favourites_count
+    };
+  };
+
+  const handleReblogClick = async (statusId: string, currentlyReblogged: boolean): Promise<{ reblogged: boolean; reblogs_count: number }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReblogged ? 'unreblog' : 'reblog';
+    console.log(`🔄 API Call: ${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`);
+    
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    console.log(`🔄 Full API response for ${endpoint}:`, updatedStatus);
+    
+    // The reblog API might return the reblog post itself, not the original with updated counts
+    // We need to check if this is a reblog response and handle accordingly
+    if (updatedStatus.reblog && updatedStatus.reblog.id === statusId) {
+      // This is a reblog response - use the original post's data from the reblog
+      console.log('🔄 Response is a reblog, using reblog.reblogs_count:', updatedStatus.reblog.reblogs_count);
+      return {
+        reblogged: true,
+        reblogs_count: updatedStatus.reblog.reblogs_count
+      };
+    } else if (endpoint === 'reblog') {
+      // For reblog, if we don't get proper count, we should increment manually
+      const currentPost = statuses.find(s => s.id === statusId);
+      const newCount = updatedStatus.reblogs_count > 0 ? updatedStatus.reblogs_count : (currentPost ? currentPost.reblogs_count + 1 : 1);
+      console.log('🔄 Reblog successful, count:', newCount);
+      return {
+        reblogged: true,
+        reblogs_count: newCount
+      };
+    } else {
+      // This should be unreblog
+      const currentPost = statuses.find(s => s.id === statusId);
+      const newCount = updatedStatus.reblogs_count >= 0 ? updatedStatus.reblogs_count : Math.max(0, (currentPost ? currentPost.reblogs_count - 1 : 0));
+      console.log('🔄 Unreblog successful, count:', newCount);
+      return {
+        reblogged: false,
+        reblogs_count: newCount
+      };
+    }
+  };
+
+  const handleEmojiReactClick = async (statusId: string, emojiName: string, currentlyReacted: boolean): Promise<EmojiReaction[]> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyReacted ? 'unreact' : 'react';
+    const apiUrl = `${snap.serverUrl}/api/v1/pleroma/statuses/${statusId}/reactions/${encodeURIComponent(emojiName)}`;
+    console.log(`🎯 Emoji ${endpoint} API call:`, apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: currentlyReacted ? 'DELETE' : 'PUT',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`🎯 Emoji ${endpoint} response status:`, response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`🎯 Emoji ${endpoint} failed:`, errorText);
+      throw new Error(`Failed to ${endpoint} with ${emojiName}: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    console.log(`🎯 Emoji ${endpoint} response:`, updatedStatus);
+    console.log(`🎯 Updated emoji reactions:`, updatedStatus.pleroma?.emoji_reactions || updatedStatus.emoji_reactions);
+    
+    return updatedStatus.pleroma?.emoji_reactions || updatedStatus.emoji_reactions || [];
+  };
+
   useEffect(() => {
     fetchTimeline();
   }, []);
@@ -288,7 +410,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
           ))}
 
           {/* Load more button */}

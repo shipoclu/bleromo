@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { TaskBar, useWindowManager } from 'wtkrjs';
+import { TaskBar, DesktopMenu, useWindowManager, type Position } from 'wtkrjs';
 import { appState, loadStoredAuth, logout } from './store/appState';
 import LoginWindow from './components/LoginWindow';
 import UserProfileWindow from './components/UserProfileWindow';
@@ -23,6 +23,8 @@ import FollowingWindow from './components/FollowingWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
+  const [startMenuOpen, setStartMenuOpen] = useState<boolean>(false);
+  const [startMenuPosition, setStartMenuPosition] = useState<Position>({ x: 0, y: 0 });
   const [imageWindowData, setImageWindowData] = useState<Record<string, { imageUrl: string; imageDescription?: string; windowNumber: number }>>({});
   const [imageWindowCounter, setImageWindowCounter] = useState(1);
   const [videoWindowData, setVideoWindowData] = useState<Record<string, { videoUrl: string; videoDescription?: string; windowNumber: number }>>({});
@@ -672,6 +674,15 @@ const App: React.FC = () => {
     />
   );
 
+  const handleStartMenuOpen = (position: Position) => {
+    setStartMenuPosition(position);
+    setStartMenuOpen(true);
+  };
+
+  const handleStartMenuClose = () => {
+    setStartMenuOpen(false);
+  };
+
   const startMenuItems = snap.isLoggedIn ? [
     {
       type: 'item' as const,
@@ -683,22 +694,29 @@ const App: React.FC = () => {
       type: 'separator' as const
     },
     {
-      type: 'item' as const,
-      text: 'Home Timeline',
-      icon: <HomeTimelineIcon />,
-      onClick: openHomeTimeline
-    },
-    {
-      type: 'item' as const,
-      text: 'Public Timeline',
-      icon: <TimelineIcon />,
-      onClick: openPublicTimeline
-    },
-    {
-      type: 'item' as const,
-      text: 'Local Timeline',
-      icon: <LocalTimelineIcon />,
-      onClick: openLocalTimeline
+      type: 'submenu' as const,
+      text: 'Timelines',
+      icon: <ConversationIcon />,
+      items: [
+        {
+          type: 'item' as const,
+          text: 'Home Timeline',
+          icon: <HomeTimelineIcon />,
+          onClick: openHomeTimeline
+        },
+        {
+          type: 'item' as const,
+          text: 'Public Timeline',
+          icon: <TimelineIcon />,
+          onClick: openPublicTimeline
+        },
+        {
+          type: 'item' as const,
+          text: 'Local Timeline',
+          icon: <LocalTimelineIcon />,
+          onClick: openLocalTimeline
+        }
+      ]
     },
     {
       type: 'item' as const,
@@ -1329,6 +1347,17 @@ const App: React.FC = () => {
         return null;
       })}
       
+      {/* Start Menu */}
+      {startMenuOpen && (
+        <DesktopMenu
+          position={startMenuPosition}
+          items={startMenuItems}
+          onClose={handleStartMenuClose}
+          zIndex={9999}
+          className="wtkr-taskbar-start-menu"
+        />
+      )}
+      
       <div style={{ marginTop: 'auto' }}>
         <TaskBar
           windows={windows.map((win: any) => ({
@@ -1342,6 +1371,9 @@ const App: React.FC = () => {
           startIcon={<StartIcon />}
           onWindowSelect={handleWindowSelect}
           onWindowMinimize={(windowId: string) => minimizeWindow({ id: windowId })}
+          onStartMenuOpen={handleStartMenuOpen}
+          onStartMenuClose={handleStartMenuClose}
+          isStartMenuOpen={startMenuOpen}
         />
       </div>
     </div>
