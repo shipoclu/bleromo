@@ -180,27 +180,39 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
             border: '1px solid #808080'
           }}
         />
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '6px',
-            marginBottom: '2px'
+            marginBottom: '2px',
+            overflow: 'hidden'
           }}>
-            <span style={{ fontSize: '14px' }}>{getNotificationIcon(notification.type, notification.emoji)}</span>
+            <span style={{ fontSize: '14px', flexShrink: 0 }}>{getNotificationIcon(notification.type, notification.emoji)}</span>
             <strong 
               style={{ 
                 cursor: onUserClick ? 'pointer' : 'default',
                 textDecoration: onUserClick ? 'underline' : 'none',
-                color: onUserClick ? 'var(--win98-help-green)' : 'inherit'
+                color: onUserClick ? 'var(--win98-help-green)' : 'inherit',
+                flexShrink: 0
               }}
               onClick={() => onUserClick && onUserClick(notification.account.id)}
               dangerouslySetInnerHTML={{
                 __html: processedDisplayName
               }}
             />
-            <span style={{ color: '#808080' }}>@{notification.account.acct}</span>
-            <span style={{ color: '#808080' }}>{getNotificationText(notification.type)}</span>
+            <span 
+              title={`@${notification.account.acct}`}
+              style={{ 
+                color: '#808080', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap',
+                minWidth: 0,
+                flex: 1
+              }}
+            >@{notification.account.acct}</span>
+            <span style={{ color: '#808080', flexShrink: 0 }}>{getNotificationText(notification.type)}</span>
           </div>
           <div style={{ 
             fontSize: '11px', 
