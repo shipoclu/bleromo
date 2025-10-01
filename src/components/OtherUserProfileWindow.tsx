@@ -31,6 +31,8 @@ interface OtherUserProfileWindowProps {
   userId: string;
   onUserPostsTimelineClick?: (userId: string, userAcct: string) => void;
   onMentionClick?: (userAcct: string) => void;
+  onFollowersClick?: (userId: string, userDisplayName?: string, totalCount?: number) => void;
+  onFollowingClick?: (userId: string, userDisplayName?: string, totalCount?: number) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -49,6 +51,8 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
   userId,
   onUserPostsTimelineClick,
   onMentionClick,
+  onFollowersClick,
+  onFollowingClick,
   onClose,
   onFocus,
   onMinimize,
@@ -265,30 +269,50 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
                 </div>
                 <div style={{ fontSize: '11px' }}>Posts</div>
               </div>
-              <div style={{
-                flex: 1,
-                textAlign: 'center',
-                padding: '8px',
-                border: '2px inset #c0c0c0',
-                backgroundColor: '#ffffff'
-              }}>
+              <button
+                onClick={() => onFollowingClick && onFollowingClick(userProfile.id, userProfile.display_name || userProfile.username, userProfile.following_count)}
+                disabled={!onFollowingClick}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  padding: '8px',
+                  border: '2px outset #c0c0c0',
+                  backgroundColor: '#c0c0c0',
+                  cursor: onFollowingClick ? 'pointer' : 'default',
+                  fontFamily: 'MS Sans Serif, sans-serif',
+                  fontSize: '12px'
+                }}
+                onMouseDown={(e) => onFollowingClick && (e.currentTarget.style.border = '2px inset #c0c0c0')}
+                onMouseUp={(e) => onFollowingClick && (e.currentTarget.style.border = '2px outset #c0c0c0')}
+                onMouseLeave={(e) => onFollowingClick && (e.currentTarget.style.border = '2px outset #c0c0c0')}
+              >
                 <div style={{ fontWeight: 'bold' }}>
                   {formatNumber(userProfile.following_count)}
                 </div>
                 <div style={{ fontSize: '11px' }}>Following</div>
-              </div>
-              <div style={{
-                flex: 1,
-                textAlign: 'center',
-                padding: '8px',
-                border: '2px inset #c0c0c0',
-                backgroundColor: '#ffffff'
-              }}>
+              </button>
+              <button
+                onClick={() => onFollowersClick && onFollowersClick(userProfile.id, userProfile.display_name || userProfile.username, userProfile.followers_count)}
+                disabled={!onFollowersClick}
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  padding: '8px',
+                  border: '2px outset #c0c0c0',
+                  backgroundColor: '#c0c0c0',
+                  cursor: onFollowersClick ? 'pointer' : 'default',
+                  fontFamily: 'MS Sans Serif, sans-serif',
+                  fontSize: '12px'
+                }}
+                onMouseDown={(e) => onFollowersClick && (e.currentTarget.style.border = '2px inset #c0c0c0')}
+                onMouseUp={(e) => onFollowersClick && (e.currentTarget.style.border = '2px outset #c0c0c0')}
+                onMouseLeave={(e) => onFollowersClick && (e.currentTarget.style.border = '2px outset #c0c0c0')}
+              >
                 <div style={{ fontWeight: 'bold' }}>
                   {formatNumber(userProfile.followers_count)}
                 </div>
                 <div style={{ fontSize: '11px' }}>Followers</div>
-              </div>
+              </button>
             </div>
 
             {/* Bio */}

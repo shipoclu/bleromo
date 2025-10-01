@@ -18,6 +18,8 @@ import OtherUserProfileWindow from './components/OtherUserProfileWindow';
 import UserPostsTimelineWindow from './components/UserPostsTimelineWindow';
 import PostCompositionWindow from './components/PostCompositionWindow';
 import AboutWindow from './components/AboutWindow';
+import FollowersWindow from './components/FollowersWindow';
+import FollowingWindow from './components/FollowingWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -37,6 +39,10 @@ const App: React.FC = () => {
   const [userPostsTimelineWindowCounter, setUserPostsTimelineWindowCounter] = useState(1);
   const [composeWindowData, setComposeWindowData] = useState<Record<string, { replyToStatusId?: string; mentionHandles?: string[]; windowNumber: number }>>({});
   const [composeWindowCounter, setComposeWindowCounter] = useState(1);
+  const [followersWindowData, setFollowersWindowData] = useState<Record<string, { userId: string; userDisplayName?: string; totalCount?: number; windowNumber: number }>>({});
+  const [followersWindowCounter, setFollowersWindowCounter] = useState(1);
+  const [followingWindowData, setFollowingWindowData] = useState<Record<string, { userId: string; userDisplayName?: string; totalCount?: number; windowNumber: number }>>({});
+  const [followingWindowCounter, setFollowingWindowCounter] = useState(1);
   const [emojiPickerStatusId, setEmojiPickerStatusId] = useState<string | null>(null);
   
   const {
@@ -197,6 +203,70 @@ const App: React.FC = () => {
         id: composeWindowId,
         title: title,
         icon: <ComposeIcon />
+      });
+    }
+  };
+
+  const openFollowersWindow = (userId: string, userDisplayName?: string, totalCount?: number) => {
+    const followersWindowId = `followers-${userId}`;
+    const existingWindow = windows.find((win: any) => win.id === followersWindowId);
+    
+    if (existingWindow) {
+      // Always ensure followers data is stored
+      setFollowersWindowData(prev => ({
+        ...prev,
+        [followersWindowId]: { userId, userDisplayName, totalCount, windowNumber: prev[followersWindowId]?.windowNumber || followersWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: followersWindowId });
+      }
+      focusWindow({ id: followersWindowId });
+    } else {
+      // Store followers data with new window number
+      const windowNumber = followersWindowCounter;
+      setFollowersWindowData(prev => ({
+        ...prev,
+        [followersWindowId]: { userId, userDisplayName, totalCount, windowNumber }
+      }));
+      setFollowersWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: followersWindowId,
+        title: `Followers ${windowNumber}`,
+        icon: <UserIcon />
+      });
+    }
+  };
+
+  const openFollowingWindow = (userId: string, userDisplayName?: string, totalCount?: number) => {
+    const followingWindowId = `following-${userId}`;
+    const existingWindow = windows.find((win: any) => win.id === followingWindowId);
+    
+    if (existingWindow) {
+      // Always ensure following data is stored
+      setFollowingWindowData(prev => ({
+        ...prev,
+        [followingWindowId]: { userId, userDisplayName, totalCount, windowNumber: prev[followingWindowId]?.windowNumber || followingWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: followingWindowId });
+      }
+      focusWindow({ id: followingWindowId });
+    } else {
+      // Store following data with new window number
+      const windowNumber = followingWindowCounter;
+      setFollowingWindowData(prev => ({
+        ...prev,
+        [followingWindowId]: { userId, userDisplayName, totalCount, windowNumber }
+      }));
+      setFollowingWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: followingWindowId,
+        title: `Following ${windowNumber}`,
+        icon: <UserIcon />
       });
     }
   };
@@ -717,6 +787,8 @@ const App: React.FC = () => {
             <UserProfileWindow
               key={win.id}
               id={win.id}
+              onFollowersClick={openFollowersWindow}
+              onFollowingClick={openFollowingWindow}
               isFocused={win.isFocused}
               isMinimized={win.isMinimized}
               isMaximized={win.isMaximized}
@@ -1074,6 +1146,8 @@ const App: React.FC = () => {
               zIndex={win.zIndex}
               onUserPostsTimelineClick={openUserPostsTimeline}
               onMentionClick={(userAcct: string) => openComposeWindow(undefined, [`@${userAcct}`])}
+              onFollowersClick={openFollowersWindow}
+              onFollowingClick={openFollowingWindow}
               onClose={() => {
                 // Clean up user profile data when window is closed
                 setUserProfileWindowData(prev => {
@@ -1081,6 +1155,74 @@ const App: React.FC = () => {
                   return rest;
                 });
                 // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('followers-')) {
+          const followersData = followersWindowData[win.id];
+          if (!followersData) {
+            return null;
+          }
+          
+          return (
+            <FollowersWindow
+              key={win.id}
+              id={win.id}
+              userId={followersData.userId}
+              userDisplayName={followersData.userDisplayName}
+              totalCount={followersData.totalCount}
+              onUserClick={openUserProfile}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                setFollowersWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('following-')) {
+          const followingData = followingWindowData[win.id];
+          if (!followingData) {
+            return null;
+          }
+          
+          return (
+            <FollowingWindow
+              key={win.id}
+              id={win.id}
+              userId={followingData.userId}
+              userDisplayName={followingData.userDisplayName}
+              totalCount={followingData.totalCount}
+              onUserClick={openUserProfile}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                setFollowingWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
                 removeWindow(win.id);
               }}
               onFocus={() => focusWindow({ id: win.id })}

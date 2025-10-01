@@ -1,0 +1,333 @@
+import React, { useEffect, useState } from 'react';
+import { DesktopWindow } from 'wtkrjs';
+import { useSnapshot } from 'valtio';
+import { appState } from '../store/appState';
+import UserConnectionComponent from './UserConnectionComponent';
+
+interface Account {
+  id: string;
+  username: string;
+  acct: string;
+  display_name: string;
+  avatar: string;
+  url: string;
+  following?: boolean;
+  followed_by?: boolean;
+  emojis?: Array<{
+    shortcode: string;
+    url: string;
+    static_url?: string;
+    visible_in_picker?: boolean;
+  }>;
+}
+
+interface FollowersWindowProps {
+  id: string;
+  userId: string;
+  userDisplayName?: string;
+  totalCount?: number;
+  onUserClick?: (userId: string) => void;
+  onClose: () => void;
+  onFocus: () => void;
+  onMinimize: () => void;
+  onMaximize: () => void;
+  onRestore: () => void;
+  onMove: () => void;
+  onResize: () => void;
+  isFocused: boolean;
+  isMinimized: boolean;
+  isMaximized: boolean;
+  zIndex: number;
+}
+
+const FollowersWindow: React.FC<FollowersWindowProps> = ({
+  id,
+  userId,
+  userDisplayName,
+  totalCount,
+  onUserClick,
+  onClose,
+  onFocus,
+  onMinimize,
+  onMaximize,
+  onRestore,
+  onMove,
+  onResize,
+  isFocused,
+  isMinimized,
+  isMaximized,
+  zIndex
+}) => {
+  const snap = useSnapshot(appState);
+  const [followers, setFollowers] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [maxId, setMaxId] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchFollowers = async (loadMore = false) => {
+    if (!snap.accessToken || !snap.serverUrl) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        limit: '40'
+      });
+      
+      if (loadMore && maxId) {
+        params.append('max_id', maxId);
+      }
+
+      const response = await fetch(`${snap.serverUrl}/api/v1/accounts/${userId}/followers?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${snap.accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch followers: ${response.status}`);
+      }
+
+      const newFollowers: Account[] = await response.json();
+
+      // Get relationship information for these accounts
+      let followersWithRelationships = newFollowers;
+      if (newFollowers.length > 0) {
+        try {
+          const accountIds = newFollowers.map(account => account.id);
+          const relationshipsResponse = await fetch(`${snap.serverUrl}/api/v1/accounts/relationships?${accountIds.map(id => `id[]=${id}`).join('&')}`, {
+            headers: {
+              'Authorization': `Bearer ${snap.accessToken}`
+            }
+          });
+
+          if (relationshipsResponse.ok) {
+            const relationships = await relationshipsResponse.json();
+            followersWithRelationships = newFollowers.map(account => {
+              const relationship = relationships.find((rel: any) => rel.id === account.id);
+              return {
+                ...account,
+                following: relationship?.following || false,
+                followed_by: relationship?.followed_by || false
+              };
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to fetch relationship data:', error);
+        }
+      }
+
+      if (loadMore) {
+        setFollowers(prev => [...prev, ...followersWithRelationships]);
+      } else {
+        setFollowers(followersWithRelationships);
+      }
+
+      // Set up pagination
+      if (newFollowers.length > 0) {
+        setMaxId(newFollowers[newFollowers.length - 1].id);
+        setHasMore(newFollowers.length === 40); // Full page means there might be more
+      } else {
+        if (loadMore) {
+          setHasMore(false);
+        }
+      }
+
+    } catch (err) {
+      console.error('Error fetching followers:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFollowClick = async (targetUserId: string, currentlyFollowing: boolean): Promise<{ following: boolean }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyFollowing ? 'unfollow' : 'follow';
+    const response = await fetch(`${snap.serverUrl}/api/v1/accounts/${targetUserId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} user: ${response.status}`);
+    }
+
+    const relationship = await response.json();
+    return {
+      following: relationship.following
+    };
+  };
+
+  const handleRefresh = () => {
+    setMaxId(null);
+    setHasMore(true);
+    fetchFollowers(false);
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoading && hasMore) {
+      fetchFollowers(true);
+    }
+  };
+
+  useEffect(() => {
+    fetchFollowers();
+  }, [userId]);
+
+  return (
+    <DesktopWindow
+      id={id}
+      title={`Followers${userDisplayName ? ` - ${userDisplayName}` : ''}`}
+      initialPosition={{ x: 180, y: 130 }}
+      initialSize={{ width: 400, height: 500 }}
+      isFocused={isFocused}
+      isMinimized={isMinimized}
+      isMaximized={isMaximized}
+      zIndex={zIndex}
+      isMinimizable={true}
+      isMaximizable={true}
+      isClosable={true}
+      isResizable={true}
+      onClose={onClose}
+      onFocus={onFocus}
+      onMinimize={onMinimize}
+      onMaximize={onMaximize}
+      onRestore={onRestore}
+      onMove={onMove}
+      onResize={onResize}
+    >
+      <div style={{
+        height: '100%',
+        backgroundColor: '#c0c0c0',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: 'MS Sans Serif, sans-serif',
+        fontSize: '12px'
+      }}>
+        {/* Toolbar */}
+        <div style={{
+          padding: '6px',
+          backgroundColor: '#c0c0c0',
+          borderBottom: '1px solid #808080',
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center'
+        }}>
+          <button 
+            onClick={handleRefresh}
+            disabled={isLoading}
+            style={{
+              padding: '4px 12px',
+              fontSize: '12px',
+              border: '2px outset #c0c0c0',
+              backgroundColor: '#c0c0c0',
+              cursor: isLoading ? 'default' : 'pointer',
+              opacity: isLoading ? 0.6 : 1
+            }}
+          >
+            {isLoading ? 'Loading...' : 'Refresh'}
+          </button>
+          
+          <span style={{ color: '#808080', fontSize: '11px' }}>
+            {totalCount !== undefined ? `${totalCount} total followers` : `${followers.length} followers`}
+          </span>
+        </div>
+
+        {/* Content area */}
+        <div style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '8px',
+          backgroundColor: '#ffffff'
+        }}>
+          {error && (
+            <div style={{ 
+              color: '#800000', 
+              padding: '10px',
+              border: '2px inset #c0c0c0',
+              backgroundColor: '#ffffff',
+              marginBottom: '10px'
+            }}>
+              Error: {error}
+              <div style={{ marginTop: '8px' }}>
+                <button 
+                  onClick={handleRefresh}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: '12px',
+                    border: '2px outset #c0c0c0',
+                    backgroundColor: '#c0c0c0',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+
+          {followers.length === 0 && !isLoading && !error && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '40px',
+              color: '#808080'
+            }}>
+              No followers found
+            </div>
+          )}
+
+          {followers.map((follower) => (
+            <UserConnectionComponent
+              key={follower.id}
+              user={follower}
+              onUserClick={onUserClick}
+              onFollowClick={handleFollowClick}
+            />
+          ))}
+
+          {/* Load more button */}
+          {hasMore && followers.length > 0 && (
+            <div style={{ textAlign: 'center', marginTop: '16px' }}>
+              <button 
+                onClick={handleLoadMore}
+                disabled={isLoading}
+                style={{
+                  padding: '6px 20px',
+                  fontSize: '12px',
+                  border: '2px outset #c0c0c0',
+                  backgroundColor: '#c0c0c0',
+                  cursor: isLoading ? 'default' : 'pointer',
+                  opacity: isLoading ? 0.6 : 1
+                }}
+              >
+                {isLoading ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
+
+          {!hasMore && followers.length > 0 && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '20px',
+              color: '#808080',
+              fontSize: '11px'
+            }}>
+              End of followers list
+            </div>
+          )}
+        </div>
+      </div>
+    </DesktopWindow>
+  );
+};
+
+export default FollowersWindow;
