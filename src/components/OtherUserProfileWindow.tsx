@@ -69,6 +69,13 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
   const [userProfile, setUserProfile] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [relationship, setRelationship] = useState<{
+    following: boolean;
+    followed_by: boolean;
+    blocking: boolean;
+    muting: boolean;
+  } | null>(null);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
   const fetchUserProfile = async () => {
     if (!snap.accessToken || !snap.serverUrl || !userId) return;
@@ -97,8 +104,59 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
     }
   };
 
+  const fetchRelationship = async () => {
+    if (!snap.accessToken || !snap.serverUrl || !userId) return;
+
+    try {
+      const response = await fetch(`${snap.serverUrl}/api/v1/accounts/relationships?id[]=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${snap.accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch relationship: ${response.status}`);
+      }
+
+      const relationships = await response.json();
+      if (relationships.length > 0) {
+        setRelationship(relationships[0]);
+      }
+    } catch (err) {
+      console.error('Error fetching relationship:', err);
+    }
+  };
+
+  const handleFollowClick = async () => {
+    if (!snap.accessToken || !snap.serverUrl || !userId || !relationship) return;
+
+    setIsFollowLoading(true);
+    try {
+      const endpoint = relationship.following ? 'unfollow' : 'follow';
+      const response = await fetch(`${snap.serverUrl}/api/v1/accounts/${userId}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${snap.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${endpoint} user: ${response.status}`);
+      }
+
+      const updatedRelationship = await response.json();
+      setRelationship(updatedRelationship);
+    } catch (error) {
+      console.error('Error toggling follow status:', error);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUserProfile();
+    fetchRelationship();
   }, [userId]);
 
   const formatNumber = (num: number) => {
@@ -241,9 +299,24 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
                 />
                 <div style={{ 
                   color: '#000080',
-                  marginBottom: '4px' 
+                  marginBottom: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}>
                   @{userProfile.acct}
+                  {relationship?.followed_by && (
+                    <span style={{
+                      fontSize: '10px',
+                      color: '#808080',
+                      backgroundColor: '#f0f0f0',
+                      padding: '2px 6px',
+                      border: '1px solid #c0c0c0',
+                      borderRadius: '2px'
+                    }}>
+                      Follows you
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: '11px', color: '#808080' }}>
                   Joined {formatDate(userProfile.created_at)}
@@ -418,6 +491,26 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
               >
                 Mention
               </button>
+              {relationship && (
+                <button 
+                  onClick={handleFollowClick}
+                  disabled={isFollowLoading}
+                  style={{
+                    padding: '6px 16px',
+                    fontSize: '12px',
+                    border: '2px outset #c0c0c0',
+                    backgroundColor: relationship.following ? '#e0e0e0' : '#c0c0c0',
+                    cursor: isFollowLoading ? 'default' : 'pointer',
+                    opacity: isFollowLoading ? 0.6 : 1,
+                    fontFamily: 'MS Sans Serif, sans-serif'
+                  }}
+                  onMouseDown={(e) => !isFollowLoading && (e.currentTarget.style.border = '2px inset #c0c0c0')}
+                  onMouseUp={(e) => !isFollowLoading && (e.currentTarget.style.border = '2px outset #c0c0c0')}
+                  onMouseLeave={(e) => !isFollowLoading && (e.currentTarget.style.border = '2px outset #c0c0c0')}
+                >
+                  {isFollowLoading ? 'Loading...' : (relationship.following ? 'Unfollow' : 'Follow')}
+                </button>
+              )}
               <button 
                 onClick={fetchUserProfile}
                 disabled={isLoading}
