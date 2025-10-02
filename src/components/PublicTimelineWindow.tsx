@@ -76,6 +76,7 @@ interface PublicTimelineWindowProps {
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
   onEmojiPickerClick?: (statusId: string) => void;
+  onRawPostClick?: (statusId: string, jsonData: any) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -99,6 +100,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
   onUserClick,
   onReplyClick,
   onEmojiPickerClick,
+  onRawPostClick,
   onClose,
   onFocus,
   onMinimize,
@@ -269,6 +271,30 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
     }
   };
 
+  const handleBookmarkClick = async (statusId: string, currentlyBookmarked: boolean): Promise<{ bookmarked: boolean }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyBookmarked ? 'unbookmark' : 'bookmark';
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return {
+      bookmarked: updatedStatus.bookmarked
+    };
+  };
+
   const handleEmojiReactClick = async (statusId: string, emojiName: string, currentlyReacted: boolean): Promise<EmojiReaction[]> => {
     if (!snap.accessToken || !snap.serverUrl) {
       throw new Error('Not authenticated');
@@ -410,7 +436,7 @@ const PublicTimelineWindow: React.FC<PublicTimelineWindowProps> = ({
           )}
 
           {statuses.map((status) => (
-            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} />
+            <PostComponent key={status.id} status={status} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} onFavoriteClick={handleFavoriteClick} onReblogClick={handleReblogClick} onEmojiReactClick={handleEmojiReactClick} onBookmarkClick={handleBookmarkClick} onRawPostClick={onRawPostClick} />
           ))}
 
           {/* Load more button */}

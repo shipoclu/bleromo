@@ -20,6 +20,7 @@ import PostCompositionWindow from './components/PostCompositionWindow';
 import AboutWindow from './components/AboutWindow';
 import FollowersWindow from './components/FollowersWindow';
 import FollowingWindow from './components/FollowingWindow';
+import RawPostWindow from './components/RawPostWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -45,6 +46,8 @@ const App: React.FC = () => {
   const [followersWindowCounter, setFollowersWindowCounter] = useState(1);
   const [followingWindowData, setFollowingWindowData] = useState<Record<string, { userId: string; userDisplayName?: string; totalCount?: number; windowNumber: number }>>({});
   const [followingWindowCounter, setFollowingWindowCounter] = useState(1);
+  const [rawPostWindowData, setRawPostWindowData] = useState<Record<string, { postId: string; jsonData: any; windowNumber: number }>>({});
+  const [rawPostWindowCounter, setRawPostWindowCounter] = useState(1);
   const [emojiPickerStatusId, setEmojiPickerStatusId] = useState<string | null>(null);
   
   const {
@@ -287,6 +290,38 @@ const App: React.FC = () => {
         id: aboutWindowId,
         title: 'About Bleromo',
         icon: <HelpIcon />
+      });
+    }
+  };
+
+  const openRawPost = (statusId: string, jsonData: any) => {
+    const rawPostWindowId = `raw-post-${statusId}`;
+    const existingWindow = windows.find((win: any) => win.id === rawPostWindowId);
+    
+    if (existingWindow) {
+      // Update data (in case it changed)
+      setRawPostWindowData(prev => ({
+        ...prev,
+        [rawPostWindowId]: { postId: statusId, jsonData, windowNumber: prev[rawPostWindowId]?.windowNumber || rawPostWindowCounter }
+      }));
+      
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: rawPostWindowId });
+      }
+      focusWindow({ id: rawPostWindowId });
+    } else {
+      // Store raw post data with new window number
+      const windowNumber = rawPostWindowCounter;
+      setRawPostWindowData(prev => ({
+        ...prev,
+        [rawPostWindowId]: { postId: statusId, jsonData, windowNumber }
+      }));
+      setRawPostWindowCounter(prev => prev + 1);
+      
+      addWindow({
+        id: rawPostWindowId,
+        title: `Raw Post ${statusId}`,
+        icon: <FileIcon />
       });
     }
   };
@@ -661,6 +696,10 @@ const App: React.FC = () => {
     <img src="/help_question_mark-0.png" alt="Help" width="16" height="16" />
   );
 
+  const FileIcon = () => (
+    <img src="/file_lines-0.png" alt="File" width="16" height="16" />
+  );
+
   const StartIcon = () => (
     <img 
       src="/pleroma-logo.svg" 
@@ -838,6 +877,7 @@ const App: React.FC = () => {
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
               onEmojiPickerClick={openEmojiPicker}
+              onRawPostClick={openRawPost}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -865,6 +905,7 @@ const App: React.FC = () => {
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
               onEmojiPickerClick={openEmojiPicker}
+              onRawPostClick={openRawPost}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -892,6 +933,7 @@ const App: React.FC = () => {
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
               onEmojiPickerClick={openEmojiPicker}
+              onRawPostClick={openRawPost}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}
@@ -1277,6 +1319,7 @@ const App: React.FC = () => {
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
               onEmojiPickerClick={openEmojiPicker}
+              onRawPostClick={openRawPost}
               onClose={() => {
                 // Clean up user posts timeline data when window is closed
                 setUserPostsTimelineWindowData(prev => {
@@ -1315,6 +1358,41 @@ const App: React.FC = () => {
               onClose={() => {
                 // Clean up compose data when window is closed
                 setComposeWindowData(prev => {
+                  const { [win.id]: removed, ...rest } = prev;
+                  return rest;
+                });
+                // Remove window from window manager
+                removeWindow(win.id);
+              }}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={() => moveWindow({ id: win.id })}
+              onResize={() => resizeWindow({ id: win.id })}
+            />
+          );
+        }
+        if (win.id.startsWith('raw-post-')) {
+          const rawPostData = rawPostWindowData[win.id];
+          if (!rawPostData) {
+            // Skip rendering if we don't have raw post data
+            return null;
+          }
+          
+          return (
+            <RawPostWindow
+              key={win.id}
+              id={win.id}
+              postId={rawPostData.postId}
+              jsonData={rawPostData.jsonData}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
+              onClose={() => {
+                // Clean up raw post data when window is closed
+                setRawPostWindowData(prev => {
                   const { [win.id]: removed, ...rest } = prev;
                   return rest;
                 });

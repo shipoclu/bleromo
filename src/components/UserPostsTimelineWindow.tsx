@@ -73,6 +73,8 @@ interface UserPostsTimelineWindowProps {
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
+  onEmojiPickerClick?: (statusId: string) => void;
+  onRawPostClick?: (statusId: string, jsonData: any) => void;
   onClose: () => void;
   onFocus: () => void;
   onMinimize: () => void;
@@ -98,6 +100,7 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
   onUserClick,
   onReplyClick,
   onEmojiPickerClick,
+  onRawPostClick,
   onClose,
   onFocus,
   onMinimize,
@@ -262,6 +265,30 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
     return updatedStatus.emoji_reactions || [];
   };
 
+  const handleBookmarkClick = async (statusId: string, currentlyBookmarked: boolean): Promise<{ bookmarked: boolean }> => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const endpoint = currentlyBookmarked ? 'unbookmark' : 'bookmark';
+    const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to ${endpoint} status: ${response.status}`);
+    }
+
+    const updatedStatus = await response.json();
+    return {
+      bookmarked: updatedStatus.bookmarked
+    };
+  };
+
   useEffect(() => {
     fetchUserPosts();
   }, [userId]);
@@ -394,6 +421,8 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
               onFavoriteClick={handleFavoriteClick}
               onReblogClick={handleReblogClick}
               onEmojiReactClick={handleEmojiReactClick}
+              onBookmarkClick={handleBookmarkClick}
+              onRawPostClick={onRawPostClick}
             />
           ))}
 

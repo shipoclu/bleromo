@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { DesktopMenu, type Position } from 'wtkrjs';
+import { useSnapshot } from 'valtio';
+import { appState } from '../store/appState';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
 
 interface Account {
@@ -54,6 +58,7 @@ interface Status {
   favourites_count: number;
   reblogged: boolean;
   favourited: boolean;
+  bookmarked: boolean;
   reblog?: Status;
   url: string;
   emoji_reactions?: EmojiReaction[];
@@ -76,6 +81,8 @@ interface PostComponentProps {
   onReblogClick?: (statusId: string, currentlyReblogged: boolean) => Promise<{ reblogged: boolean; reblogs_count: number }>;
   onEmojiReactClick?: (statusId: string, emojiName: string, currentlyReacted: boolean) => Promise<EmojiReaction[]>;
   onEmojiPickerClick?: (statusId: string) => void;
+  onBookmarkClick?: (statusId: string, currentlyBookmarked: boolean) => Promise<{ bookmarked: boolean }>;
+  onRawPostClick?: (statusId: string, jsonData: any) => void;
 }
 
 const SensitiveMediaOverlay: React.FC<{ onClick: () => void }> = ({ onClick }) => {
@@ -158,12 +165,16 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
   );
 };
 
-const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onAudioClick, onYouTubeClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick, onEmojiReactClick, onEmojiPickerClick }) => {
+const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onAudioClick, onYouTubeClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick, onEmojiReactClick, onEmojiPickerClick, onBookmarkClick, onRawPostClick }) => {
+  const snap = useSnapshot(appState);
   const [localStatus, setLocalStatus] = useState(status);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isReblogging, setIsReblogging] = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
   const [showSensitiveMedia, setShowSensitiveMedia] = useState(false);
   const [reactingEmoji, setReactingEmoji] = useState<string | null>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState<Position>({ x: 0, y: 0 });
 
   // Update local status when prop changes
   useEffect(() => {
@@ -582,6 +593,113 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     }
   };
 
+
+  const handlePostActionsButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    
+    // Position menu below the button using global coordinates for portal
+    const globalX = rect.left;
+    const globalY = rect.bottom + 2;
+    
+    setContextMenuPosition({ x: globalX, y: globalY });
+    setContextMenuOpen(true);
+  };
+
+  const handleMenuClose = () => {
+    setContextMenuOpen(false);
+  };
+
+  // Create context menu items
+  const contextMenuItems = [
+    {
+      type: 'item' as const,
+      text: localStatus.bookmarked ? 'Unbookmark' : 'Bookmark',
+      onClick: async () => {
+        console.log('🔖 Bookmark menu item clicked!');
+        console.log('🔖 onBookmarkClick function:', onBookmarkClick);
+        console.log('🔖 isBookmarking:', isBookmarking);
+        console.log('🔖 localStatus.bookmarked:', localStatus.bookmarked);
+        console.log('🔖 localStatus.id:', localStatus.id);
+        
+        if (!onBookmarkClick || isBookmarking) {
+          console.log('🔖 Bookmark action blocked - no function or already processing');
+          return;
+        }
+        
+        setIsBookmarking(true);
+        console.log('🔖 Starting bookmark API call...');
+        
+        try {
+          const result = await onBookmarkClick(localStatus.id, localStatus.bookmarked);
+          console.log('🔖 Bookmark API result:', result);
+          
+          const updatedStatus = {
+            ...localStatus,
+            bookmarked: result.bookmarked
+          };
+          
+          setLocalStatus(updatedStatus);
+          console.log('🔖 Updated local status:', updatedStatus);
+          
+          // Update all instances of this post across windows
+          updatePostEngagementCounts([updatedStatus], 'PostComponent');
+        } catch (error) {
+          console.error('🔖 Error toggling bookmark:', error);
+        } finally {
+          setIsBookmarking(false);
+          console.log('🔖 Bookmark processing complete');
+        }
+        
+        // Close menu after action
+        setContextMenuOpen(false);
+        console.log('🔖 Menu closed');
+      },
+      disabled: isBookmarking
+    },
+    {
+      type: 'item' as const,
+      text: 'Raw',
+      onClick: async () => {
+        if (!snap.accessToken || !snap.serverUrl) {
+          console.error('❌ Not authenticated');
+          return;
+        }
+
+        if (!onRawPostClick) {
+          console.error('❌ No raw post click handler provided');
+          return;
+        }
+
+        try {
+          console.log('📄 Fetching raw post data for:', localStatus.id);
+          const response = await fetch(`${snap.serverUrl}/api/v1/statuses/${localStatus.id}`, {
+            headers: {
+              'Authorization': `Bearer ${snap.accessToken}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch post data: ${response.status}`);
+          }
+
+          const jsonData = await response.json();
+          console.log('📄 Raw post data fetched:', jsonData);
+          
+          onRawPostClick(localStatus.id, jsonData);
+        } catch (error) {
+          console.error('📄 Error fetching raw post data:', error);
+        }
+        
+        // Close menu after action
+        setContextMenuOpen(false);
+      },
+      disabled: false
+    }
+  ];
+
   // If this is a boost/reblog, show the boost info and the original post
   if (status.reblog) {
     return (
@@ -595,7 +713,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           fontFamily: 'MS Sans Serif, sans-serif',
           fontSize: '12px',
           overflow: 'hidden',
-          wordWrap: 'break-word'
+          wordWrap: 'break-word',
+          position: 'relative'
         }}>
         {/* Boost header */}
         <div style={{
@@ -629,25 +748,27 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         </div>
         
         {/* Original post */}
-        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} onFavoriteClick={onFavoriteClick} onReblogClick={onReblogClick} onEmojiReactClick={onEmojiReactClick} />
+        <PostComponent status={status.reblog} onImageClick={onImageClick} onVideoClick={onVideoClick} onAudioClick={onAudioClick} onYouTubeClick={onYouTubeClick} onConversationClick={onConversationClick} onUserClick={onUserClick} onReplyClick={onReplyClick} onEmojiPickerClick={onEmojiPickerClick} onFavoriteClick={onFavoriteClick} onReblogClick={onReblogClick} onEmojiReactClick={onEmojiReactClick} onBookmarkClick={onBookmarkClick} onRawPostClick={onRawPostClick} />
       </div>
     );
   }
 
   // Regular post
   return (
-    <div 
-      data-post-id={localStatus.id}
-      style={{
-        padding: '8px',
-        border: '1px solid #808080',
-        backgroundColor: '#ffffff',
-        marginBottom: '8px',
-        fontFamily: 'MS Sans Serif, sans-serif',
-        fontSize: '12px',
-        overflow: 'hidden',
-        wordWrap: 'break-word'
-      }}>
+    <>
+      <div 
+        data-post-id={localStatus.id}
+        style={{
+          padding: '8px',
+          border: '1px solid #808080',
+          backgroundColor: '#ffffff',
+          marginBottom: '8px',
+          fontFamily: 'MS Sans Serif, sans-serif',
+          fontSize: '12px',
+          overflow: 'hidden',
+          wordWrap: 'break-word',
+          position: 'relative'
+        }}>
       {/* Header with avatar and user info */}
       <div style={{
         display: 'flex',
@@ -811,7 +932,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         fontSize: '11px',
         color: '#808080',
         borderTop: '1px solid #e0e0e0',
-        paddingTop: '6px'
+        paddingTop: '6px',
+        overflow: 'visible'
       }}>
         <span 
           data-replies-count
@@ -847,13 +969,19 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           ⭐ {formatNumber(localStatus.favourites_count)}
         </span>
 
-        {/* Emoji React Picker Button */}
-        {onEmojiPickerClick && (
+        {/* Button Group */}
+        <div style={{ 
+          display: 'inline-flex', 
+          marginLeft: '8px',
+          gap: '2px',
+          position: 'relative'
+        }}>
+          {/* Post Actions Button */}
           <button
-            onClick={() => onEmojiPickerClick(localStatus.id)}
-            title="Add emoji reaction"
+            onClick={handlePostActionsButtonClick}
+            title="Post Actions"
             style={{
-              marginLeft: '8px',
+              margin: '0',
               padding: '2px 4px',
               fontSize: '10px',
               border: '2px outset #c0c0c0',
@@ -863,33 +991,52 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
               minWidth: 'auto',
               width: 'auto',
               lineHeight: '1',
-              verticalAlign: 'middle'
+              verticalAlign: 'middle',
+              filter: 'none',
+              color: 'inherit'
             }}
             onMouseDown={(e) => e.currentTarget.style.border = '2px inset #c0c0c0'}
             onMouseUp={(e) => e.currentTarget.style.border = '2px outset #c0c0c0'}
             onMouseLeave={(e) => e.currentTarget.style.border = '2px outset #c0c0c0'}
           >
-            ⁂
+            📑
           </button>
-        )}
+          
+          {/* Emoji React Picker Button */}
+          {onEmojiPickerClick && (
+            <button
+              onClick={() => onEmojiPickerClick(localStatus.id)}
+              title="Add emoji reaction"
+              style={{
+                margin: '0',
+                padding: '2px 4px',
+                fontSize: '10px',
+                border: '2px outset #c0c0c0',
+                backgroundColor: '#c0c0c0',
+                cursor: 'pointer',
+                fontFamily: 'MS Sans Serif, sans-serif',
+                minWidth: 'auto',
+                width: 'auto',
+                lineHeight: '1',
+                verticalAlign: 'middle'
+              }}
+              onMouseDown={(e) => e.currentTarget.style.border = '2px inset #c0c0c0'}
+              onMouseUp={(e) => e.currentTarget.style.border = '2px outset #c0c0c0'}
+              onMouseLeave={(e) => e.currentTarget.style.border = '2px outset #c0c0c0'}
+            >
+              ⁂
+            </button>
+          )}
+        </div>
         
         {/* Emoji Reactions */}
         {(() => {
           const reactions = getEmojiReactions(localStatus);
-          console.log(`🎨 Rendering emoji reactions for status ${localStatus.id}:`, reactions);
           return reactions.length > 0;
         })() && (
           <>
             {getEmojiReactions(localStatus).map((reaction) => {
               const opacity = reactingEmoji === reaction.name ? 0.5 : 1;
-              console.log(`🎨 Rendering reaction:`, {
-                name: reaction.name,
-                url: reaction.url,
-                count: reaction.count,
-                me: reaction.me,
-                reactingEmoji: reactingEmoji,
-                opacity: opacity
-              });
               return (
                 <span
                   key={reaction.name}
@@ -938,7 +1085,19 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
            localStatus.visibility === 'private' ? '🔒' : '✉️'}
         </span>
       </div>
-    </div>
+      </div>
+      
+      {/* Portal for post actions menu */}
+      {contextMenuOpen && createPortal(
+        <DesktopMenu
+          position={contextMenuPosition}
+          items={contextMenuItems}
+          onClose={handleMenuClose}
+          zIndex={10000}
+        />,
+        document.body
+      )}
+    </>
   );
 };
 
