@@ -25,3 +25,6 @@ dist-ssr
 
 # Stuff that exists for teaching AI
 reference/*
+
+# local stuff
+sync.sh

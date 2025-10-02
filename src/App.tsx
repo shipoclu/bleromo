@@ -646,7 +646,7 @@ const App: React.FC = () => {
   );
 
   const NotificationIcon = () => (
-    <img src="/file_lines-0.png" alt="Notifications" width="16" height="16" />
+    <img src="/mailbox.png" alt="Notifications" width="16" height="16" />
   );
 
   const ConversationIcon = () => (
