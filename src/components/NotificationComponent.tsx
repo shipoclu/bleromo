@@ -19,6 +19,13 @@ interface CustomEmoji {
   visible_in_picker?: boolean;
 }
 
+interface EmojiReaction {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string;
+}
+
 interface Status {
   id: string;
   created_at: string;
@@ -48,6 +55,11 @@ interface Status {
   bookmarked?: boolean;
   reblog?: Status;
   url: string;
+  emoji_reactions?: EmojiReaction[];
+  pleroma?: {
+    emoji_reactions?: EmojiReaction[];
+    [key: string]: any;
+  };
 }
 
 interface Notification {
@@ -57,6 +69,7 @@ interface Notification {
   account: Account;
   status?: Status;
   emoji?: string;
+  emoji_url?: string;
 }
 
 interface NotificationComponentProps {
@@ -114,6 +127,44 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
     }
   };
 
+  const normalizeEmojiName = (value?: string | null) => {
+    if (!value) return '';
+    return value.replace(/^:+|:+$/g, '');
+  };
+
+  const getReactionEmojiUrl = (notification: Notification) => {
+    if (notification.emoji_url) return notification.emoji_url;
+    const reactions = notification.status?.pleroma?.emoji_reactions
+      || notification.status?.emoji_reactions
+      || [];
+    const target = normalizeEmojiName(notification.emoji);
+    if (!target) return undefined;
+    return reactions.find(reaction => normalizeEmojiName(reaction.name) === target)?.url;
+  };
+
+  const renderNotificationIcon = (notification: Notification) => {
+    if (notification.type !== 'pleroma:emoji_reaction') {
+      return getNotificationIcon(notification.type, notification.emoji);
+    }
+    const emojiUrl = getReactionEmojiUrl(notification);
+    const emojiLabel = notification.emoji || 'reaction';
+    if (emojiUrl) {
+      return (
+        <img
+          src={emojiUrl}
+          alt={emojiLabel}
+          title={emojiLabel}
+          style={{
+            width: '14px',
+            height: '14px',
+            verticalAlign: 'middle'
+          }}
+        />
+      );
+    }
+    return emojiLabel || '👍';
+  };
+
   const getNotificationText = (type: string) => {
     switch (type) {
       case 'mention':
@@ -169,7 +220,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
               marginBottom: '2px',
               overflow: 'hidden'
             }}>
-              <span style={{ fontSize: '14px', flexShrink: 0 }}>{getNotificationIcon(notification.type)}</span>
+              <span style={{ fontSize: '14px', flexShrink: 0 }}>{renderNotificationIcon(notification)}</span>
               <strong 
                 style={{ 
                   cursor: onUserClick ? 'pointer' : 'default',
@@ -248,7 +299,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
             marginBottom: '2px',
             overflow: 'hidden'
           }}>
-            <span style={{ fontSize: '14px', flexShrink: 0 }}>{getNotificationIcon(notification.type, notification.emoji)}</span>
+            <span style={{ fontSize: '14px', flexShrink: 0 }}>{renderNotificationIcon(notification)}</span>
             <strong 
               style={{ 
                 cursor: onUserClick ? 'pointer' : 'default',

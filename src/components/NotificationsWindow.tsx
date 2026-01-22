@@ -59,6 +59,7 @@ interface Notification {
   account: Account;
   status?: Status;
   emoji?: string;
+  emoji_url?: string;
 }
 
 interface NotificationsWindowProps {
