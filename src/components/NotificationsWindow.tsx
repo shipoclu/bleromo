@@ -4,6 +4,7 @@ import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import NotificationComponent from './NotificationComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface Account {
   id: string;
@@ -98,6 +99,7 @@ interface NotificationsWindowProps {
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,8 +110,11 @@ interface NotificationsWindowProps {
   const fetchNotifications = async (loadMore = false, loadNewer = false) => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const params = new URLSearchParams({
@@ -125,7 +130,8 @@ interface NotificationsWindowProps {
       const response = await fetch(`${snap.serverUrl}/api/v1/notifications?${params}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -133,6 +139,7 @@ interface NotificationsWindowProps {
       }
 
       const newNotifications: Notification[] = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
 
       if (loadNewer) {
         // Add to the beginning (newer notifications)
@@ -170,15 +177,22 @@ interface NotificationsWindowProps {
       
       if (statusesFromNotifications.length > 0) {
         setTimeout(() => {
+          if (!isMountedRef.current) return;
           updatePostEngagementCounts(statusesFromNotifications, 'Notifications');
         }, 100);
       }
 
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching notifications:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

@@ -4,6 +4,7 @@ import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface EmojiReaction {
   name: string;
@@ -115,6 +116,7 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,8 +126,11 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
   const fetchTimeline = async (loadMore = false) => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const params = new URLSearchParams({
@@ -140,7 +145,8 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
       const response = await fetch(`${snap.serverUrl}/api/v1/timelines/home?${params}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -148,6 +154,7 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
       }
 
       const newStatuses: Status[] = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
       
       // Debug: Check for emoji reactions in the response
       const statusesWithReactions = newStatuses.filter(status => 
@@ -184,14 +191,21 @@ const HomeTimelineWindow: React.FC<HomeTimelineWindowProps> = ({
 
       // Update engagement counts across all windows after a brief delay to ensure DOM is updated
       setTimeout(() => {
+        if (!isMountedRef.current) return;
         updatePostEngagementCounts(newStatuses, 'Home Timeline');
       }, 100);
 
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching home timeline:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

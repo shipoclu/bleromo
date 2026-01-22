@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface CustomEmoji {
   shortcode: string;
@@ -66,6 +67,7 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [userProfile, setUserProfile] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,14 +82,18 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
   const fetchUserProfile = async () => {
     if (!snap.accessToken || !snap.serverUrl || !userId) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const response = await fetch(`${snap.serverUrl}/api/v1/accounts/${userId}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -95,23 +101,32 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
       }
 
       const userData = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
       setUserProfile(userData);
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching user profile:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const fetchRelationship = async () => {
     if (!snap.accessToken || !snap.serverUrl || !userId) return;
 
+    const controller = createController();
     try {
       const response = await fetch(`${snap.serverUrl}/api/v1/accounts/relationships?id[]=${userId}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -119,11 +134,15 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
       }
 
       const relationships = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
       if (relationships.length > 0) {
         setRelationship(relationships[0]);
       }
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching relationship:', err);
+    } finally {
+      releaseController(controller);
     }
   };
 

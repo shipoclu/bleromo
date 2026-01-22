@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface ReplyToStatus {
   id: string;
@@ -49,6 +50,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [summary, setSummary] = useState('');
   const [postBody, setPostBody] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -63,48 +65,58 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
   // Fetch reply status information when replyToStatusId is provided
   useEffect(() => {
     if (replyToStatusId && snap.accessToken && snap.serverUrl) {
-      setLoadingReplyInfo(true);
+      const controller = createController();
+      if (isMountedRef.current) {
+        setLoadingReplyInfo(true);
+      }
+
       fetch(`${snap.serverUrl}/api/v1/statuses/${replyToStatusId}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       })
-      .then(response => {
-        if (response.ok) {
-          return response.json();
-        }
-        throw new Error('Failed to fetch reply status');
-      })
-      .then(status => {
-        setReplyToStatus({
-          id: status.id,
-          account: {
-            display_name: status.account.display_name,
-            username: status.account.username,
-            acct: status.account.acct
-          },
-          content: status.content,
-          created_at: status.created_at,
-          visibility: status.visibility
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error('Failed to fetch reply status');
+        })
+        .then(status => {
+          if (!isMountedRef.current || controller.signal.aborted) return;
+          setReplyToStatus({
+            id: status.id,
+            account: {
+              display_name: status.account.display_name,
+              username: status.account.username,
+              acct: status.account.acct
+            },
+            content: status.content,
+            created_at: status.created_at,
+            visibility: status.visibility
+          });
+          
+          // Match the visibility of the post being replied to
+          if (status.visibility === 'direct') {
+            setVisibility('direct');
+          } else if (status.visibility === 'private') {
+            setVisibility('private');
+          } else if (status.visibility === 'unlisted') {
+            setVisibility('unlisted');
+          } else {
+            setVisibility('public');
+          }
+        })
+        .catch(error => {
+          if (controller.signal.aborted) return;
+          console.error('Error fetching reply status:', error);
+        })
+        .finally(() => {
+          releaseController(controller);
+          if (!controller.signal.aborted && isMountedRef.current) {
+            setLoadingReplyInfo(false);
+          }
         });
-        
-        // Match the visibility of the post being replied to
-        if (status.visibility === 'direct') {
-          setVisibility('direct');
-        } else if (status.visibility === 'private') {
-          setVisibility('private');
-        } else if (status.visibility === 'unlisted') {
-          setVisibility('unlisted');
-        } else {
-          setVisibility('public');
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching reply status:', error);
-      })
-      .finally(() => {
-        setLoadingReplyInfo(false);
-      });
     }
   }, [replyToStatusId, snap.accessToken, snap.serverUrl]);
 

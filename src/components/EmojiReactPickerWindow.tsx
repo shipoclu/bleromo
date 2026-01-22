@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 // Global cache for custom emoji to persist across component instances
 const customEmojiCache = new Map<string, CustomEmoji>();
@@ -10,7 +11,7 @@ const customEmojiImageCache = new Map<string, string>(); // Cache for image URLs
 const CACHE_DURATION = 5 * 24 * 60 * 60 * 1000; // 5 days
 
 // Function to preload and cache emoji images
-const preloadEmojiImages = async (serverUrl: string, emojiData: CustomEmoji) => {
+const preloadEmojiImages = async (serverUrl: string, emojiData: CustomEmoji, signal?: AbortSignal) => {
   const imagesToCache: Promise<void>[] = [];
   
   Object.entries(emojiData).forEach(([name, data]) => {
@@ -26,7 +27,8 @@ const preloadEmojiImages = async (serverUrl: string, emojiData: CustomEmoji) => 
     const cachePromise = fetch(imageUrl, {
       method: 'GET',
       cache: 'force-cache', // Aggressive browser caching
-      mode: 'cors'
+      mode: 'cors',
+      signal
     })
     .then(response => response.blob())
     .then(blob => {
@@ -119,6 +121,7 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [activeTab, setActiveTab] = useState<'emoji' | 'custom'>('emoji');
   const [searchText, setSearchText] = useState('');
   const [customEmoji, setCustomEmoji] = useState<CustomEmoji>({});
@@ -150,15 +153,19 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
       return;
     }
 
-    setIsLoadingCustom(true);
-    setCustomEmojiError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoadingCustom(true);
+      setCustomEmojiError(null);
+    }
 
     try {
       console.log('🌐 Fetching custom emoji from server:', snap.serverUrl);
       const response = await fetch(`${snap.serverUrl}/api/v1/pleroma/emoji`, {
         headers: snap.accessToken ? {
           'Authorization': `Bearer ${snap.accessToken}`
-        } : {}
+        } : {},
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -166,6 +173,7 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
       }
 
       const emojiData: CustomEmoji = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
       
       // Cache the data
       customEmojiCache.set(cacheKey, emojiData);
@@ -173,14 +181,21 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
       console.log(`💾 Cached ${Object.keys(emojiData).length} custom emoji for ${cacheKey}`);
       
       // Preload and cache emoji images
-      await preloadEmojiImages(snap.serverUrl, emojiData);
+      await preloadEmojiImages(snap.serverUrl, emojiData, controller.signal);
+      if (!isMountedRef.current || controller.signal.aborted) return;
       
       setCustomEmoji(emojiData);
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching custom emoji:', err);
-      setCustomEmojiError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setCustomEmojiError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoadingCustom(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoadingCustom(false);
+      }
     }
   }, [snap.serverUrl, snap.accessToken]);
 

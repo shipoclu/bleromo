@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { startLogin, completeLogin, failLogin } from '../store/appState';
 
 interface LoginFormProps {
@@ -9,6 +9,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
   const [handle, setHandle] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isValid, setIsValid] = useState<boolean>(false);
+  const intervalRef = useRef<number | null>(null);
+  const messageHandlerRef = useRef<((event: MessageEvent) => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (messageHandlerRef.current) {
+        window.removeEventListener('message', messageHandlerRef.current);
+        messageHandlerRef.current = null;
+      }
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Validate fediverse handle format
   const validateHandle = (input: string): boolean => {
@@ -176,11 +191,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
           cleanup();
         }
       }, 1000);
+      intervalRef.current = checkClosed;
 
       const cleanup = () => {
         hasProcessedResult = true;
         window.removeEventListener('message', handleMessage);
-        clearInterval(checkClosed);
+        if (intervalRef.current !== null) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
         setIsLoading(false);
         sessionStorage.removeItem('oauth_app_data');
         if (!popup.closed) {
@@ -189,6 +208,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
       };
 
       window.addEventListener('message', handleMessage);
+      messageHandlerRef.current = handleMessage;
 
     } catch (error) {
       console.error('OAuth setup failed:', error);

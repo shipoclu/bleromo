@@ -4,6 +4,7 @@ import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface Account {
   id: string;
@@ -120,6 +121,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [conversation, setConversation] = useState<ConversationContext | null>(null);
   const [originalStatus, setOriginalStatus] = useState<Status | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -128,8 +130,11 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
   const fetchConversation = async () => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       // Fetch the original status and its context
@@ -137,12 +142,14 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
         fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}`, {
           headers: {
             'Authorization': `Bearer ${snap.accessToken}`
-          }
+          },
+          signal: controller.signal
         }),
         fetch(`${snap.serverUrl}/api/v1/statuses/${statusId}/context`, {
           headers: {
             'Authorization': `Bearer ${snap.accessToken}`
-          }
+          },
+          signal: controller.signal
         })
       ]);
 
@@ -156,20 +163,28 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
       const status: Status = await statusResponse.json();
       const context: ConversationContext = await contextResponse.json();
 
+      if (!isMountedRef.current || controller.signal.aborted) return;
       setOriginalStatus(status);
       setConversation(context);
 
       // Update engagement counts for all posts in conversation
       const allPosts = [status, ...context.ancestors, ...context.descendants];
       setTimeout(() => {
+        if (!isMountedRef.current) return;
         updatePostEngagementCounts(allPosts, 'Conversation');
       }, 100);
 
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching conversation:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

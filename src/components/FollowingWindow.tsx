@@ -3,6 +3,7 @@ import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtk
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import UserConnectionComponent from './UserConnectionComponent';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface Account {
   id: string;
@@ -59,6 +60,7 @@ const FollowingWindow: React.FC<FollowingWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [following, setFollowing] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +70,11 @@ const FollowingWindow: React.FC<FollowingWindowProps> = ({
   const fetchFollowing = async (loadMore = false) => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const params = new URLSearchParams({
@@ -83,7 +88,8 @@ const FollowingWindow: React.FC<FollowingWindowProps> = ({
       const response = await fetch(`${snap.serverUrl}/api/v1/accounts/${userId}/following?${params}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -91,20 +97,24 @@ const FollowingWindow: React.FC<FollowingWindowProps> = ({
       }
 
       const newFollowing: Account[] = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
 
       // Get relationship information for these accounts
       let followingWithRelationships = newFollowing;
       if (newFollowing.length > 0) {
+        const relationshipController = createController();
         try {
           const accountIds = newFollowing.map(account => account.id);
           const relationshipsResponse = await fetch(`${snap.serverUrl}/api/v1/accounts/relationships?${accountIds.map(id => `id[]=${id}`).join('&')}`, {
             headers: {
               'Authorization': `Bearer ${snap.accessToken}`
-            }
+            },
+            signal: relationshipController.signal
           });
 
-          if (relationshipsResponse.ok) {
+          if (!relationshipController.signal.aborted && relationshipsResponse.ok) {
             const relationships = await relationshipsResponse.json();
+            if (!isMountedRef.current || relationshipController.signal.aborted) return;
             followingWithRelationships = newFollowing.map(account => {
               const relationship = relationships.find((rel: any) => rel.id === account.id);
               return {
@@ -115,7 +125,11 @@ const FollowingWindow: React.FC<FollowingWindowProps> = ({
             });
           }
         } catch (error) {
-          console.warn('Failed to fetch relationship data:', error);
+          if (!relationshipController.signal.aborted) {
+            console.warn('Failed to fetch relationship data:', error);
+          }
+        } finally {
+          releaseController(relationshipController);
         }
       }
 
@@ -136,10 +150,16 @@ const FollowingWindow: React.FC<FollowingWindowProps> = ({
       }
 
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching following:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

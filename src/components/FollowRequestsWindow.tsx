@@ -3,6 +3,7 @@ import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtk
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import FollowRequestItem from './FollowRequestItem';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface Account {
   id: string;
@@ -51,6 +52,7 @@ const FollowRequestsWindow: React.FC<FollowRequestsWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [requests, setRequests] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +62,11 @@ const FollowRequestsWindow: React.FC<FollowRequestsWindowProps> = ({
   const fetchRequests = async (loadMore = false) => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const params = new URLSearchParams({
@@ -75,7 +80,8 @@ const FollowRequestsWindow: React.FC<FollowRequestsWindowProps> = ({
       const response = await fetch(`${snap.serverUrl}/api/v1/follow_requests?${params}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -83,6 +89,7 @@ const FollowRequestsWindow: React.FC<FollowRequestsWindowProps> = ({
       }
 
       const newRequests: Account[] = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
 
       if (loadMore) {
         setRequests(prev => [...prev, ...newRequests]);
@@ -97,10 +104,16 @@ const FollowRequestsWindow: React.FC<FollowRequestsWindowProps> = ({
         setHasMore(false);
       }
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching follow requests:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

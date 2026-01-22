@@ -4,6 +4,7 @@ import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import PostComponent from './PostComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface EmojiReaction {
   name: string;
@@ -115,6 +116,7 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,8 +126,11 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
   const fetchUserPosts = async (loadMore = false) => {
     if (!snap.accessToken || !snap.serverUrl || !userId) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const params = new URLSearchParams({
@@ -139,7 +144,8 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
       const response = await fetch(`${snap.serverUrl}/api/v1/accounts/${userId}/statuses?${params}`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -147,6 +153,7 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
       }
 
       const newStatuses: Status[] = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
       
       // Filter to only show notes and boosts (no other activity types)
       const filteredStatuses = newStatuses.filter(status => 
@@ -171,14 +178,21 @@ const UserPostsTimelineWindow: React.FC<UserPostsTimelineWindowProps> = ({
 
       // Update engagement counts across all windows after a brief delay to ensure DOM is updated
       setTimeout(() => {
+        if (!isMountedRef.current) return;
         updatePostEngagementCounts(newStatuses, `User Posts (@${userAcct})`);
       }, 100);
 
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching user posts:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

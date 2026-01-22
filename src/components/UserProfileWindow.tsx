@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
+import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface CustomEmoji {
   shortcode: string;
@@ -58,6 +59,7 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
   zIndex
 }) => {
   const snap = useSnapshot(appState);
+  const { createController, releaseController, isMountedRef } = useAbortControllers();
   const [userProfile, setUserProfile] = useState<UserData | null>(snap.userData);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,14 +67,18 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
   const fetchUserProfile = async () => {
     if (!snap.accessToken || !snap.serverUrl) return;
 
-    setIsLoading(true);
-    setError(null);
+    const controller = createController();
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const response = await fetch(`${snap.serverUrl}/api/v1/accounts/verify_credentials`, {
         headers: {
           'Authorization': `Bearer ${snap.accessToken}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -80,12 +86,19 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
       }
 
       const userData = await response.json();
+      if (!isMountedRef.current || controller.signal.aborted) return;
       setUserProfile(userData);
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('Error fetching user profile:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
-      setIsLoading(false);
+      releaseController(controller);
+      if (!controller.signal.aborted && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
