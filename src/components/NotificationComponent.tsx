@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import FollowRequestItem from './FollowRequestItem';
 import ParsedContent from './ParsedContent';
 
@@ -97,6 +97,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   onFollowRequestApprove,
   onFollowRequestDeny
 }) => {
+  const [scopeHover, setScopeHover] = useState(false);
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -185,6 +186,21 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
         return 'reacted to your post';
       default:
         return 'notified you';
+    }
+  };
+
+  const getVisibilityLabel = (visibility: Status['visibility']) => {
+    switch (visibility) {
+      case 'public':
+        return 'Public';
+      case 'unlisted':
+        return 'Unlisted';
+      case 'private':
+        return 'Followers-only';
+      case 'direct':
+        return 'Direct';
+      default:
+        return 'Unknown';
     }
   };
 
@@ -491,9 +507,20 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
               style={{ 
                 cursor: onConversationClick ? 'pointer' : 'default',
                 fontSize: '14px',
-                marginLeft: 'auto'
+                marginLeft: 'auto',
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0 4px',
+                borderRadius: '2px',
+                backgroundColor: scopeHover && onConversationClick ? '#c0c0c0' : 'transparent',
+                boxShadow: scopeHover && onConversationClick
+                  ? 'inset -1px -1px #0a0a0a, inset 1px 1px #ffffff'
+                  : 'none'
               }}
               onClick={() => onConversationClick && onConversationClick(notification.status!.id)}
+              onMouseEnter={() => setScopeHover(true)}
+              onMouseLeave={() => setScopeHover(false)}
+              title={`Visibility: ${getVisibilityLabel(notification.status!.visibility)}`}
             >
               {notification.status!.visibility === 'public' ? '🌐' : 
                notification.status!.visibility === 'unlisted' ? '🔓' :

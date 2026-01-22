@@ -179,6 +179,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   const [reactingEmoji, setReactingEmoji] = useState<string | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<Position>({ x: 0, y: 0 });
+  const [scopeHover, setScopeHover] = useState(false);
   const postRef = useRef<HTMLDivElement | null>(null);
 
   // Update local status when prop changes
@@ -235,6 +236,21 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
+  };
+
+  const getVisibilityLabel = (visibility: Status['visibility']) => {
+    switch (visibility) {
+      case 'public':
+        return 'Public';
+      case 'unlisted':
+        return 'Unlisted';
+      case 'private':
+        return 'Followers-only';
+      case 'direct':
+        return 'Direct';
+      default:
+        return 'Unknown';
+    }
   };
 
   // Helper function to get emoji reactions from the correct location
@@ -886,9 +902,20 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         <span 
           style={{ 
             marginLeft: 'auto',
-            cursor: onConversationClick ? 'pointer' : 'default'
+            cursor: onConversationClick ? 'pointer' : 'default',
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '0 4px',
+            borderRadius: '2px',
+            backgroundColor: scopeHover && onConversationClick ? '#c0c0c0' : 'transparent',
+            boxShadow: scopeHover && onConversationClick
+              ? 'inset -1px -1px #0a0a0a, inset 1px 1px #ffffff'
+              : 'none'
           }}
           onClick={() => onConversationClick && onConversationClick(localStatus.id)}
+          onMouseEnter={() => setScopeHover(true)}
+          onMouseLeave={() => setScopeHover(false)}
+          title={`Visibility: ${getVisibilityLabel(localStatus.visibility)}`}
         >
           {localStatus.visibility === 'public' ? '🌐' : 
            localStatus.visibility === 'unlisted' ? '🔓' :
