@@ -143,6 +143,11 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
+    addAttachments(files);
+  };
+
+  const addAttachments = (files: File[]) => {
+    if (files.length === 0) return;
     setAttachments(prev => [...prev, ...files]);
   };
 
@@ -237,13 +242,17 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
       const newStatus = await response.json();
       console.log('Successfully posted status:', newStatus);
 
+      const shouldClose = Boolean(replyToStatusId);
+
       // Clear form and close window on success
       setSummary('');
       setPostBody('');
       setAttachments([]);
       setSensitiveMedia(false);
       setVisibility('public');
-      onClose();
+      if (shouldClose) {
+        onClose();
+      }
 
     } catch (err) {
       console.error('Full error details:', err);
@@ -383,6 +392,22 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
                   handleSubmit();
                 }
               }
+            }}
+            onPaste={(e) => {
+              const clipboard = e.clipboardData;
+              if (!clipboard) return;
+              const items = Array.from(clipboard.items || []);
+              const filesFromItems = items
+                .filter(item => item.kind === 'file')
+                .map(item => item.getAsFile())
+                .filter((file): file is File => Boolean(file));
+              const files = filesFromItems.length > 0
+                ? filesFromItems
+                : Array.from(clipboard.files || []);
+              const imageFiles = files.filter(file => file.type.startsWith('image/'));
+              if (imageFiles.length === 0) return;
+              e.preventDefault();
+              addAttachments(imageFiles);
             }}
             placeholder={replyToStatusId ? "Write your reply..." : "What's happening?"}
             style={{
