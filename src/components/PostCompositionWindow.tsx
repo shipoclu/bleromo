@@ -375,6 +375,15 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
           <textarea
             value={postBody}
             onChange={(e) => setPostBody(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                if (!isSubmitting && (postBody.trim() || attachments.length > 0)) {
+                  handleSubmit();
+                }
+              }
+            }}
             placeholder={replyToStatusId ? "Write your reply..." : "What's happening?"}
             style={{
               flex: 1,
