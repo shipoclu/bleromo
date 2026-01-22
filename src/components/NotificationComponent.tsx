@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import FollowRequestItem from './FollowRequestItem';
+import ParsedContent from './ParsedContent';
 
 interface Account {
   id: string;
@@ -26,6 +27,12 @@ interface Status {
   visibility: 'public' | 'unlisted' | 'private' | 'direct';
   spoiler_text: string;
   emojis?: CustomEmoji[];
+  mentions: Array<{
+    id: string;
+    username: string;
+    acct: string;
+    url: string;
+  }>;
   media_attachments: Array<{
     id: string;
     type: 'image' | 'video' | 'audio' | 'unknown';
@@ -70,7 +77,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   onImageClick, 
   onVideoClick,
   onAudioClick,
-  onYouTubeClick: _onYouTubeClick,
+  onYouTubeClick,
   onConversationClick,
   onUserClick,
   onReplyClick,
@@ -82,39 +89,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
 
-  const stripHtml = useCallback((html: string) => {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
-  }, []);
-
-  const processCustomEmoji = useCallback((content: string, emojis?: CustomEmoji[]) => {
-    if (!emojis || emojis.length === 0) {
-      return stripHtml(content);
-    }
-
-    let processedContent = stripHtml(content);
-    
-    emojis.forEach(emoji => {
-      const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
-      const emojiImg = `<img src="${emoji.url}" alt=":${emoji.shortcode}:" style="height: 1.2em !important; width: auto !important; vertical-align: middle !important; display: inline !important; opacity: 1 !important; visibility: visible !important; transform: none !important;" />`;
-      processedContent = processedContent.replace(emojiPattern, emojiImg);
-    });
-
-    return processedContent;
-  }, [stripHtml]);
-
-  // Memoize processed content
-  const processedDisplayName = useMemo(() => {
-    return processCustomEmoji(notification.account.display_name || notification.account.username, notification.account.emojis);
-  }, [notification.account.display_name, notification.account.username, notification.account.emojis, processCustomEmoji]);
-
-  const processedStatusContent = useMemo(() => {
-    if (notification.status) {
-      return processCustomEmoji(notification.status.content, notification.status.emojis);
-    }
-    return '';
-  }, [notification.status?.content, notification.status?.emojis, processCustomEmoji]);
+  const displayName = notification.account.display_name || notification.account.username;
 
   const getNotificationIcon = (type: string, emoji?: string) => {
     switch (type) {
@@ -203,10 +178,9 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
                   flexShrink: 0
                 }}
                 onClick={() => onUserClick && onUserClick(notification.account.id)}
-                dangerouslySetInnerHTML={{
-                  __html: processedDisplayName
-                }}
-              />
+              >
+                <ParsedContent html={displayName} emojis={notification.account.emojis} />
+              </strong>
               <span 
                 title={`@${notification.account.acct}`}
                 style={{ 
@@ -283,10 +257,9 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
                 flexShrink: 0
               }}
               onClick={() => onUserClick && onUserClick(notification.account.id)}
-              dangerouslySetInnerHTML={{
-                __html: processedDisplayName
-              }}
-            />
+            >
+              <ParsedContent html={displayName} emojis={notification.account.emojis} />
+            </strong>
             <span 
               title={`@${notification.account.acct}`}
               style={{ 
@@ -338,10 +311,15 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
               marginBottom: '8px',
               lineHeight: '1.4'
             }}
-            dangerouslySetInnerHTML={{
-              __html: processedStatusContent
-            }}
-          />
+          >
+            <ParsedContent
+              html={notification.status.content}
+              mentions={notification.status.mentions}
+              emojis={notification.status.emojis}
+              onUserClick={onUserClick}
+              onYouTubeClick={onYouTubeClick}
+            />
+          </div>
 
           {/* Media attachments */}
           {notification.status.media_attachments.length > 0 && (

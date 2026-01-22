@@ -29,6 +29,12 @@ interface Status {
     static_url?: string;
     visible_in_picker?: boolean;
   }>;
+  mentions: Array<{
+    id: string;
+    username: string;
+    acct: string;
+    url: string;
+  }>;
   media_attachments: Array<{
     id: string;
     type: 'image' | 'video' | 'audio' | 'unknown';

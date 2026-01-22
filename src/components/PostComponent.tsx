@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DesktopMenu, type Position } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
+import ParsedContent from './ParsedContent';
 
 interface Account {
   id: string;
@@ -218,257 +219,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
 
-  const stripHtml = useCallback((html: string) => {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
-  }, []);
-
-  const extractYouTubeVideoId = useCallback((url: string): string | null => {
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
-    ];
-    
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) {
-        return match[1];
-      }
-    }
-    return null;
-  }, []);
-
-  const processPostContentToElements = useCallback((content: string, emojis?: CustomEmoji[], mentions?: Array<{id: string; username: string; acct: string; url: string}>, onUserClick?: (userId: string) => void, onYouTubeClick?: (videoId: string, videoUrl: string) => void): React.ReactNode[] => {
-    let processedContent = stripHtml(content);
-    const parts: React.ReactNode[] = [];
-    
-    // Create a map of all patterns (emoji, mentions, and URLs) and their positions
-    const matches: Array<{ 
-      index: number; 
-      length: number; 
-      type: 'emoji' | 'mention' | 'url' | 'youtube'; 
-      data: CustomEmoji | {id: string; username: string; acct: string; url: string} | string; 
-      matchIndex: number 
-    }> = [];
-    
-    // Find emoji patterns
-    if (emojis && emojis.length > 0) {
-      emojis.forEach((emoji, emojiIndex) => {
-        const emojiPattern = new RegExp(`:${emoji.shortcode}:`, 'g');
-        let match;
-        
-        while ((match = emojiPattern.exec(processedContent)) !== null) {
-          matches.push({
-            index: match.index,
-            length: match[0].length,
-            type: 'emoji',
-            data: emoji,
-            matchIndex: emojiIndex * 10000 + match.index // unique key for emoji
-          });
-        }
-      });
-    }
-    
-    // Find mention patterns using the mentions array from the API
-    if (mentions && mentions.length > 0) {
-      mentions.forEach((mention, mentionIndex) => {
-        // First try to match the full @username@domain format if it exists in content
-        const fullPattern = `@${mention.acct}`;
-        const escapedFullPattern = fullPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const fullRegex = new RegExp(escapedFullPattern, 'g');
-        let foundFullMatch = false;
-        let match;
-        
-        // Check if the full pattern exists
-        while ((match = fullRegex.exec(processedContent)) !== null) {
-          matches.push({
-            index: match.index,
-            length: match[0].length,
-            type: 'mention',
-            data: mention,
-            matchIndex: 20000 + mentionIndex * 1000 + match.index // unique key for mentions
-          });
-          foundFullMatch = true;
-        }
-        
-        // Reset regex for the shorter pattern check
-        const shortPattern = `@${mention.username}`;
-        const escapedShortPattern = shortPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const shortRegex = new RegExp(escapedShortPattern, 'g');
-        
-        // Only try the shorter pattern if we didn't find the full pattern
-        if (!foundFullMatch) {
-          while ((match = shortRegex.exec(processedContent)) !== null) {
-            matches.push({
-              index: match.index,
-              length: match[0].length,
-              type: 'mention',
-              data: mention,
-              matchIndex: 20000 + mentionIndex * 1000 + match.index // unique key for mentions
-            });
-          }
-        }
-      });
-    }
-    
-    // Find URL patterns - exclude emoji and other unicode characters that should end URLs
-    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]\u{1F000}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]+)/gu;
-    let urlMatch;
-    
-    while ((urlMatch = urlPattern.exec(processedContent)) !== null) {
-      const url = urlMatch[1];
-      const videoId = extractYouTubeVideoId(url);
-      
-      if (videoId) {
-        // This is a YouTube URL
-        matches.push({
-          index: urlMatch.index,
-          length: urlMatch[0].length,
-          type: 'youtube',
-          data: url,
-          matchIndex: 30000 + urlMatch.index // unique key for YouTube URLs
-        });
-      } else {
-        // This is a regular URL
-        matches.push({
-          index: urlMatch.index,
-          length: urlMatch[0].length,
-          type: 'url',
-          data: url,
-          matchIndex: 40000 + urlMatch.index // unique key for regular URLs
-        });
-      }
-    }
-    
-    // Sort matches by position
-    matches.sort((a, b) => a.index - b.index);
-    
-    let lastIndex = 0;
-    matches.forEach((match) => {
-      // Add text before this match
-      if (match.index > lastIndex) {
-        const textPart = processedContent.slice(lastIndex, match.index);
-        if (textPart) {
-          parts.push(textPart);
-        }
-      }
-      
-      if (match.type === 'emoji') {
-        // Add emoji as React element
-        const emoji = match.data as CustomEmoji;
-        parts.push(
-          <img 
-            key={`emoji-${match.matchIndex}`}
-            src={emoji.url} 
-            alt={`:${emoji.shortcode}:`}
-            style={{
-              height: '1.2em',
-              width: 'auto',
-              verticalAlign: 'middle',
-              display: 'inline',
-              opacity: 1,
-              visibility: 'visible',
-              transform: 'none'
-            }}
-          />
-        );
-      } else if (match.type === 'mention') {
-        // Add mention as clickable React element
-        const mention = match.data as {id: string; username: string; acct: string; url: string};
-        const fullMention = processedContent.slice(match.index, match.index + match.length);
-        
-        parts.push(
-          <span
-            key={`mention-${match.matchIndex}`}
-            style={{
-              color: 'var(--win98-help-green)',
-              textDecoration: 'none',
-              cursor: onUserClick ? 'pointer' : 'default'
-            }}
-            onClick={() => {
-              if (onUserClick) {
-                // Use the actual user ID from the mention object
-                onUserClick(mention.id);
-              }
-            }}
-            title={`View profile of @${mention.acct}`}
-          >
-            {fullMention}
-          </span>
-        );
-      } else if (match.type === 'youtube') {
-        // Add YouTube URL as clickable red link
-        const url = match.data as string;
-        const videoId = extractYouTubeVideoId(url);
-        
-        parts.push(
-          <span
-            key={`youtube-${match.matchIndex}`}
-            style={{
-              color: '#ff0000',
-              textDecoration: 'underline',
-              cursor: 'pointer'
-            }}
-            onClick={() => {
-              if (onYouTubeClick && videoId) {
-                onYouTubeClick(videoId, url);
-              }
-            }}
-            title={`Open YouTube video: ${url}`}
-          >
-            {url}
-          </span>
-        );
-      } else if (match.type === 'url') {
-        // Add regular URL as clickable blue link
-        const url = match.data as string;
-        
-        parts.push(
-          <a
-            key={`url-${match.matchIndex}`}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: '#0000ff',
-              textDecoration: 'underline'
-            }}
-          >
-            {url}
-          </a>
-        );
-      }
-      
-      lastIndex = match.index + match.length;
-    });
-    
-    // Add remaining text
-    if (lastIndex < processedContent.length) {
-      const remainingText = processedContent.slice(lastIndex);
-      if (remainingText) {
-        parts.push(remainingText);
-      }
-    }
-    
-    return parts.length > 0 ? parts : [processedContent];
-  }, [stripHtml, extractYouTubeVideoId]);
-
-  // Memoize processed content to avoid re-processing during re-renders
-  const processedDisplayName = useMemo(() => {
-    return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick, onYouTubeClick);
-  }, [localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick, onYouTubeClick]);
-
-  const processedContent = useMemo(() => {
-    return processPostContentToElements(localStatus.content, localStatus.emojis, localStatus.mentions, onUserClick, onYouTubeClick);
-  }, [localStatus.content, localStatus.emojis, localStatus.mentions, processPostContentToElements, onUserClick, onYouTubeClick]);
-
-  const processedReblogDisplayName = useMemo(() => {
-    if (localStatus.reblog) {
-      return processPostContentToElements(localStatus.account.display_name || localStatus.account.username, localStatus.account.emojis, undefined, onUserClick, onYouTubeClick);
-    }
-    return [];
-  }, [localStatus.reblog, localStatus.account.display_name, localStatus.account.username, localStatus.account.emojis, processPostContentToElements, onUserClick, onYouTubeClick]);
+  const displayName = localStatus.account.display_name || localStatus.account.username;
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -750,7 +501,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
             }}
             onClick={() => onUserClick && onUserClick(status.account.id)}
           >
-            {processedReblogDisplayName}
+            <ParsedContent html={displayName} emojis={localStatus.account.emojis} />
           </strong> 
           <span style={{ flexShrink: 0 }}>boosted</span>
         </div>
@@ -812,9 +563,9 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
                 textDecoration: onUserClick ? 'underline' : 'none',
                 color: onUserClick ? 'var(--win98-help-green)' : 'inherit'
               }}
-              onClick={() => onUserClick && onUserClick(localStatus.account.id)}
-            >
-              {processedDisplayName}
+            onClick={() => onUserClick && onUserClick(localStatus.account.id)}
+          >
+              <ParsedContent html={displayName} emojis={localStatus.account.emojis} />
             </strong>
             <span style={{ 
               color: '#808080',
@@ -857,7 +608,13 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           lineHeight: '1.4'
         }}
       >
-        {processedContent}
+        <ParsedContent
+          html={localStatus.content}
+          mentions={localStatus.mentions}
+          emojis={localStatus.emojis}
+          onUserClick={onUserClick}
+          onYouTubeClick={onYouTubeClick}
+        />
       </div>
 
       {/* Media attachments */}
