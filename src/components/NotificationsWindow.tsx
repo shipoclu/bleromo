@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DesktopWindow } from 'wtkrjs';
+import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import NotificationComponent from './NotificationComponent';
@@ -68,8 +68,8 @@ interface NotificationsWindowProps {
   onMinimize: () => void;
   onMaximize: () => void;
   onRestore: () => void;
-  onMove: () => void;
-  onResize: () => void;
+  onMove: (event: WindowMoveEvent) => void;
+  onResize: (event: WindowResizeEvent) => void;
   isFocused: boolean;
   isMinimized: boolean;
   isMaximized: boolean;

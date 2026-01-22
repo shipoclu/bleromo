@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DesktopWindow } from 'wtkrjs';
+import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 
 interface AudioPlayerWindowProps {
   id: string;
@@ -11,8 +11,8 @@ interface AudioPlayerWindowProps {
   onMinimize: () => void;
   onMaximize: () => void;
   onRestore: () => void;
-  onMove: () => void;
-  onResize: () => void;
+  onMove: (event: WindowMoveEvent) => void;
+  onResize: (event: WindowResizeEvent) => void;
   isFocused: boolean;
   isMinimized: boolean;
   isMaximized: boolean;

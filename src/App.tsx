@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { TaskBar, DesktopMenu, useWindowManager, type Position } from 'wtkrjs';
+import { TaskBar, DesktopMenu, useWindowManager, type Position, type Size } from 'wtkrjs';
 import { appState, loadStoredAuth, logout } from './store/appState';
 import LoginWindow from './components/LoginWindow';
 import UserProfileWindow from './components/UserProfileWindow';
@@ -62,6 +62,14 @@ const App: React.FC = () => {
     resizeWindow,
   } = useWindowManager();
 
+  const addWindowWithDefaults = (window: { id: string; title: string; icon?: React.ReactNode; position: Position; size: Size }) => {
+    addWindow({
+      ...window,
+      isMinimized: false,
+      isMaximized: false
+    });
+  };
+
   useEffect(() => {
     loadStoredAuth();
   }, []);
@@ -88,10 +96,12 @@ const App: React.FC = () => {
       }
       focusWindow({ id: profileWindowId });
     } else {
-      addWindow({
+      addWindowWithDefaults({
         id: profileWindowId,
         title: 'User Profile',
-        icon: <UserIcon />
+        icon: <UserIcon />,
+        position: { x: 150, y: 80 },
+        size: { width: 450, height: 500 }
       });
     }
   };
@@ -120,10 +130,12 @@ const App: React.FC = () => {
       }));
       setUserProfileWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: userProfileWindowId,
         title: `User Profile ${windowNumber}`,
-        icon: <UserIcon />
+        icon: <UserIcon />,
+        position: { x: 170, y: 100 },
+        size: { width: 450, height: 500 }
       });
     }
   };
@@ -168,10 +180,12 @@ const App: React.FC = () => {
         title = title.substring(0, 17) + '...';
       }
       
-      addWindow({
+      addWindowWithDefaults({
         id: userPostsTimelineWindowId,
         title: title,
-        icon: <TimelineIcon />
+        icon: <TimelineIcon />,
+        position: { x: 200, y: 120 },
+        size: { width: 500, height: 600 }
       });
     }
   };
@@ -204,10 +218,12 @@ const App: React.FC = () => {
       // Create title for window
       const title = replyToStatusId ? 'Reply to Post' : 'Compose Post';
       
-      addWindow({
+      addWindowWithDefaults({
         id: composeWindowId,
         title: title,
-        icon: <ComposeIcon />
+        icon: <ComposeIcon />,
+        position: { x: 220, y: 140 },
+        size: { width: 500, height: 450 }
       });
     }
   };
@@ -236,10 +252,12 @@ const App: React.FC = () => {
       }));
       setFollowersWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: followersWindowId,
         title: `Followers ${windowNumber}`,
-        icon: <UserIcon />
+        icon: <UserIcon />,
+        position: { x: 180, y: 130 },
+        size: { width: 400, height: 500 }
       });
     }
   };
@@ -268,10 +286,12 @@ const App: React.FC = () => {
       }));
       setFollowingWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: followingWindowId,
         title: `Following ${windowNumber}`,
-        icon: <UserIcon />
+        icon: <UserIcon />,
+        position: { x: 200, y: 150 },
+        size: { width: 400, height: 500 }
       });
     }
   };
@@ -286,10 +306,12 @@ const App: React.FC = () => {
       }
       focusWindow({ id: aboutWindowId });
     } else {
-      addWindow({
+      addWindowWithDefaults({
         id: aboutWindowId,
         title: 'About Bleromo',
-        icon: <HelpIcon />
+        icon: <HelpIcon />,
+        position: { x: 200, y: 150 },
+        size: { width: 350, height: 250 }
       });
     }
   };
@@ -318,10 +340,12 @@ const App: React.FC = () => {
       }));
       setRawPostWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: rawPostWindowId,
         title: `Raw Post ${statusId}`,
-        icon: <FileIcon />
+        icon: <FileIcon />,
+        position: { x: 150, y: 100 },
+        size: { width: 600, height: 500 }
       });
     }
   };
@@ -336,10 +360,12 @@ const App: React.FC = () => {
       }
       focusWindow({ id: timelineWindowId });
     } else {
-      addWindow({
+      addWindowWithDefaults({
         id: timelineWindowId,
         title: 'Public Timeline',
-        icon: <TimelineIcon />
+        icon: <TimelineIcon />,
+        position: { x: 100, y: 50 },
+        size: { width: 500, height: 600 }
       });
     }
   };
@@ -354,10 +380,12 @@ const App: React.FC = () => {
       }
       focusWindow({ id: timelineWindowId });
     } else {
-      addWindow({
+      addWindowWithDefaults({
         id: timelineWindowId,
         title: 'Local Timeline',
-        icon: <LocalTimelineIcon />
+        icon: <LocalTimelineIcon />,
+        position: { x: 120, y: 70 },
+        size: { width: 500, height: 600 }
       });
     }
   };
@@ -372,10 +400,12 @@ const App: React.FC = () => {
       }
       focusWindow({ id: timelineWindowId });
     } else {
-      addWindow({
+      addWindowWithDefaults({
         id: timelineWindowId,
         title: 'Home Timeline',
-        icon: <HomeTimelineIcon />
+        icon: <HomeTimelineIcon />,
+        position: { x: 80, y: 30 },
+        size: { width: 500, height: 600 }
       });
     }
   };
@@ -390,10 +420,12 @@ const App: React.FC = () => {
       }
       focusWindow({ id: notificationsWindowId });
     } else {
-      addWindow({
+      addWindowWithDefaults({
         id: notificationsWindowId,
         title: 'Notifications',
-        icon: <NotificationIcon />
+        icon: <NotificationIcon />,
+        position: { x: 140, y: 90 },
+        size: { width: 500, height: 600 }
       });
     }
   };
@@ -432,10 +464,12 @@ const App: React.FC = () => {
       }));
       setImageWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: imageWindowId,
         title: `Image Viewer ${windowNumber}`,
-        icon: <ImageIcon />
+        icon: <ImageIcon />,
+        position: { x: 100, y: 100 },
+        size: { width: 400, height: 300 }
       });
     }
   };
@@ -478,10 +512,12 @@ const App: React.FC = () => {
       }));
       setVideoWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: videoWindowId,
         title: `Video Player ${windowNumber}`,
-        icon: <VideoIcon />
+        icon: <VideoIcon />,
+        position: { x: 120, y: 120 },
+        size: { width: 640, height: 480 }
       });
     }
   };
@@ -524,10 +560,12 @@ const App: React.FC = () => {
       }));
       setAudioWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: audioWindowId,
         title: `Audio Player ${windowNumber}`,
-        icon: <AudioIcon />
+        icon: <AudioIcon />,
+        position: { x: 160, y: 160 },
+        size: { width: 400, height: 120 }
       });
     }
   };
@@ -560,10 +598,12 @@ const App: React.FC = () => {
       }));
       setYoutubeWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: youtubeWindowId,
         title: `YouTube Player ${windowNumber}`,
-        icon: <YouTubeIcon />
+        icon: <YouTubeIcon />,
+        position: { x: 200, y: 200 },
+        size: { width: 640, height: 400 }
       });
     }
   };
@@ -584,10 +624,12 @@ const App: React.FC = () => {
       // Create new emoji picker window
       setEmojiPickerStatusId(statusId);
       
-      addWindow({
+      addWindowWithDefaults({
         id: emojiPickerWindowId,
         title: 'Emoji React',
-        icon: <span>❤️</span>
+        icon: <span>❤️</span>,
+        position: { x: 300, y: 200 },
+        size: { width: 500, height: 400 }
       });
     }
   };
@@ -636,10 +678,12 @@ const App: React.FC = () => {
       }));
       setConversationWindowCounter(prev => prev + 1);
       
-      addWindow({
+      addWindowWithDefaults({
         id: conversationWindowId,
         title: `Conversation ${windowNumber}`,
-        icon: <ConversationIcon />
+        icon: <ConversationIcon />,
+        position: { x: 160, y: 110 },
+        size: { width: 600, height: 700 }
       });
     }
   };
@@ -855,8 +899,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -883,8 +927,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -911,8 +955,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -939,8 +983,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -965,8 +1009,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1007,8 +1051,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1043,8 +1087,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1079,8 +1123,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1115,8 +1159,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1151,8 +1195,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1182,8 +1226,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1220,8 +1264,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1254,8 +1298,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1288,8 +1332,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1332,8 +1376,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1367,8 +1411,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
@@ -1402,8 +1446,8 @@ const App: React.FC = () => {
               onMinimize={() => minimizeWindow({ id: win.id })}
               onMaximize={() => maximizeWindow({ id: win.id })}
               onRestore={() => restoreWindow({ id: win.id })}
-              onMove={() => moveWindow({ id: win.id })}
-              onResize={() => resizeWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
             />
           );
         }
