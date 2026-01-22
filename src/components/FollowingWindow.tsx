@@ -230,7 +230,7 @@ const FollowingWindow: React.FC<FollowingWindowProps> = ({
         backgroundColor: '#c0c0c0',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         fontSize: '12px'
       }}>
         {/* Toolbar */}

@@ -45,7 +45,7 @@ const AboutWindow: React.FC<AboutWindowProps> = ({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         textAlign: 'center'
       }}>
         <img 

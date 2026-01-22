@@ -131,7 +131,7 @@ const ImageViewerWindow: React.FC<ImageViewerWindowProps> = ({
         display: 'flex',
         flexDirection: 'column',
         padding: '8px',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         fontSize: '12px'
       }}>
         {isLoading && (

@@ -484,7 +484,7 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
         backgroundColor: '#c0c0c0',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         fontSize: '12px'
       }}>
         {/* Search field */}
@@ -503,7 +503,7 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
               border: '2px inset #c0c0c0',
               backgroundColor: '#ffffff',
               fontSize: '12px',
-              fontFamily: 'MS Sans Serif, sans-serif'
+              fontFamily: 'var(--win98-font)'
             }}
           />
         </div>
@@ -523,7 +523,7 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
               color: activeTab === 'emoji' ? '#000000' : '#c0c0c0',
               cursor: 'pointer',
               fontSize: '12px',
-              fontFamily: 'MS Sans Serif, sans-serif',
+              fontFamily: 'var(--win98-font)',
               borderTop: activeTab === 'emoji' ? '2px outset #c0c0c0' : '1px solid #808080',
               borderLeft: '1px solid #808080',
               borderRight: '1px solid #404040'
@@ -541,7 +541,7 @@ const EmojiReactPickerWindow: React.FC<EmojiReactPickerWindowProps> = ({
               color: activeTab === 'custom' ? '#000000' : '#c0c0c0',
               cursor: 'pointer',
               fontSize: '12px',
-              fontFamily: 'MS Sans Serif, sans-serif',
+              fontFamily: 'var(--win98-font)',
               borderTop: activeTab === 'custom' ? '2px outset #c0c0c0' : '1px solid #808080',
               borderLeft: '1px solid #404040',
               borderRight: '1px solid #808080'

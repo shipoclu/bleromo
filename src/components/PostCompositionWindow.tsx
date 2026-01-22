@@ -316,7 +316,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
         padding: '8px',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         fontSize: '12px',
         gap: '8px'
       }}>
@@ -371,7 +371,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
               padding: '4px',
               border: '2px inset #c0c0c0',
               fontSize: '12px',
-              fontFamily: 'MS Sans Serif, sans-serif'
+              fontFamily: 'var(--win98-font)'
             }}
           />
         </div>
@@ -415,7 +415,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
               padding: '4px',
               border: '2px inset #c0c0c0',
               fontSize: '12px',
-              fontFamily: 'MS Sans Serif, sans-serif',
+              fontFamily: 'var(--win98-font)',
               resize: 'none',
               minHeight: '120px'
             }}
@@ -526,7 +526,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
               padding: '4px 8px',
               border: '2px inset #c0c0c0',
               fontSize: '12px',
-              fontFamily: 'MS Sans Serif, sans-serif',
+              fontFamily: 'var(--win98-font)',
               backgroundColor: replyToStatus?.visibility === 'direct' ? '#f0f0f0' : 'white',
               color: 'black',
               cursor: replyToStatus?.visibility === 'direct' ? 'not-allowed' : 'pointer',

@@ -97,7 +97,7 @@ const FollowRequestItem: React.FC<FollowRequestItemProps> = ({
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      fontFamily: 'MS Sans Serif, sans-serif',
+      fontFamily: 'var(--win98-font)',
       fontSize: '12px'
     }}>
       {!compact && (
@@ -171,7 +171,7 @@ const FollowRequestItem: React.FC<FollowRequestItemProps> = ({
                 backgroundColor: '#c0c0c0',
                 cursor: (isApproving || isDenying) ? 'default' : 'pointer',
                 opacity: (isApproving || isDenying) ? 0.6 : 1,
-                fontFamily: 'MS Sans Serif, sans-serif'
+                fontFamily: 'var(--win98-font)'
               }}
             >
               {isApproving ? 'Approving...' : 'Approve'}
@@ -186,7 +186,7 @@ const FollowRequestItem: React.FC<FollowRequestItemProps> = ({
                 backgroundColor: '#c0c0c0',
                 cursor: (isApproving || isDenying) ? 'default' : 'pointer',
                 opacity: (isApproving || isDenying) ? 0.6 : 1,
-                fontFamily: 'MS Sans Serif, sans-serif'
+                fontFamily: 'var(--win98-font)'
               }}
             >
               {isDenying ? 'Denying...' : 'Deny'}

@@ -195,7 +195,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
         border: '1px solid #808080',
         backgroundColor: '#ffffff',
         marginBottom: '8px',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         fontSize: '12px'
       }}>
         <div style={{
@@ -273,7 +273,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
       border: '1px solid #808080',
       backgroundColor: '#ffffff',
       marginBottom: '8px',
-      fontFamily: 'MS Sans Serif, sans-serif',
+      fontFamily: 'var(--win98-font)',
       fontSize: '12px'
     }}>
       {/* Notification header */}

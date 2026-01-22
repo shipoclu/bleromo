@@ -275,7 +275,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
             cursor: isLoading || !isValid ? 'default' : 'pointer',
             minWidth: '80px',
             borderRadius: '0',
-            fontFamily: 'MS Sans Serif, sans-serif',
+            fontFamily: 'var(--win98-font)',
             opacity: isLoading || !isValid ? 0.6 : 1
           }}
         >

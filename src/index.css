@@ -1,6 +1,25 @@
 /* CSS Variables for Windows 98 Theme */
 :root {
   --win98-help-green: #008000;
+  --win98-font: "MS Sans Serif Embedded", "MS Sans Serif", Arial, sans-serif;
+}
+
+@font-face {
+  font-family: "MS Sans Serif Embedded";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("98.css/fonts/converted/ms_sans_serif.woff2") format("woff2"),
+       url("98.css/fonts/converted/ms_sans_serif.woff") format("woff");
+}
+
+@font-face {
+  font-family: "MS Sans Serif Embedded";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("98.css/fonts/converted/ms_sans_serif_bold.woff2") format("woff2"),
+       url("98.css/fonts/converted/ms_sans_serif_bold.woff") format("woff");
 }
 
 /* CSS Reset for wtkrjs compatibility */
@@ -16,6 +35,23 @@ body {
   width: 100%;
   height: 100vh;
   overflow: hidden;
+}
+
+/* Allow system font smoothing instead of 98.css forcing none. */
+.window,
+.title-bar,
+button,
+input,
+label,
+legend,
+li[role='tab'],
+option,
+select,
+table,
+textarea,
+ul.tree-view {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
 }
 
 #root {

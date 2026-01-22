@@ -70,7 +70,7 @@ const UserConnectionComponent: React.FC<UserConnectionComponentProps> = ({
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      fontFamily: 'MS Sans Serif, sans-serif',
+      fontFamily: 'var(--win98-font)',
       fontSize: '12px'
     }}>
       {/* Avatar */}
@@ -144,7 +144,7 @@ const UserConnectionComponent: React.FC<UserConnectionComponentProps> = ({
               backgroundColor: isFollowing ? '#e0e0e0' : '#c0c0c0',
               cursor: isLoading ? 'default' : 'pointer',
               opacity: isLoading ? 0.6 : 1,
-              fontFamily: 'MS Sans Serif, sans-serif',
+              fontFamily: 'var(--win98-font)',
               minWidth: '60px'
             }}
             onMouseDown={(e) => !isLoading && (e.currentTarget.style.border = '2px inset #c0c0c0')}

@@ -166,7 +166,7 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
         backgroundColor: '#c0c0c0',
         padding: '8px',
         overflow: 'auto',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         fontSize: '12px'
       }}>
         {isLoading && (
@@ -272,7 +272,7 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
                   border: '2px outset #c0c0c0',
                   backgroundColor: '#c0c0c0',
                   cursor: onFollowingClick ? 'pointer' : 'default',
-                  fontFamily: 'MS Sans Serif, sans-serif',
+                  fontFamily: 'var(--win98-font)',
                   fontSize: '12px'
                 }}
                 onMouseDown={(e) => onFollowingClick && (e.currentTarget.style.border = '2px inset #c0c0c0')}
@@ -294,7 +294,7 @@ const UserProfileWindow: React.FC<UserProfileWindowProps> = ({
                   border: '2px outset #c0c0c0',
                   backgroundColor: '#c0c0c0',
                   cursor: onFollowersClick ? 'pointer' : 'default',
-                  fontFamily: 'MS Sans Serif, sans-serif',
+                  fontFamily: 'var(--win98-font)',
                   fontSize: '12px'
                 }}
                 onMouseDown={(e) => onFollowersClick && (e.currentTarget.style.border = '2px inset #c0c0c0')}

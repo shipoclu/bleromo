@@ -250,7 +250,7 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
         backgroundColor: '#c0c0c0',
         padding: '8px',
         overflow: 'auto',
-        fontFamily: 'MS Sans Serif, sans-serif',
+        fontFamily: 'var(--win98-font)',
         fontSize: '12px'
       }}>
         {isLoading && (
@@ -371,7 +371,7 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
                   border: '2px outset #c0c0c0',
                   backgroundColor: '#c0c0c0',
                   cursor: onFollowingClick ? 'pointer' : 'default',
-                  fontFamily: 'MS Sans Serif, sans-serif',
+                  fontFamily: 'var(--win98-font)',
                   fontSize: '12px'
                 }}
                 onMouseDown={(e) => onFollowingClick && (e.currentTarget.style.border = '2px inset #c0c0c0')}
@@ -393,7 +393,7 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
                   border: '2px outset #c0c0c0',
                   backgroundColor: '#c0c0c0',
                   cursor: onFollowersClick ? 'pointer' : 'default',
-                  fontFamily: 'MS Sans Serif, sans-serif',
+                  fontFamily: 'var(--win98-font)',
                   fontSize: '12px'
                 }}
                 onMouseDown={(e) => onFollowersClick && (e.currentTarget.style.border = '2px inset #c0c0c0')}
@@ -521,7 +521,7 @@ const OtherUserProfileWindow: React.FC<OtherUserProfileWindowProps> = ({
                     backgroundColor: relationship.following ? '#e0e0e0' : '#c0c0c0',
                     cursor: isFollowLoading ? 'default' : 'pointer',
                     opacity: isFollowLoading ? 0.6 : 1,
-                    fontFamily: 'MS Sans Serif, sans-serif'
+                    fontFamily: 'var(--win98-font)'
                   }}
                   onMouseDown={(e) => !isFollowLoading && (e.currentTarget.style.border = '2px inset #c0c0c0')}
                   onMouseUp={(e) => !isFollowLoading && (e.currentTarget.style.border = '2px outset #c0c0c0')}
