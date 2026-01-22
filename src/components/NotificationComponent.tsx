@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import FollowRequestItem from './FollowRequestItem';
 import ParsedContent from './ParsedContent';
+import PollComponent from './PollComponent';
+import type { Poll } from '../types/poll';
 
 interface Account {
   id: string;
@@ -53,6 +55,8 @@ interface Status {
   reblogged: boolean;
   favourited: boolean;
   bookmarked?: boolean;
+  poll?: Poll | null;
+  poll_id?: string;
   reblog?: Status;
   url: string;
   emoji_reactions?: EmojiReaction[];
@@ -387,6 +391,10 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
               onYouTubeClick={onYouTubeClick}
             />
           </div>
+
+          {(notification.status.poll || notification.status.poll_id) && (
+            <PollComponent poll={notification.status.poll ?? null} pollId={notification.status.poll_id} />
+          )}
 
           {/* Media attachments */}
           {notification.status.media_attachments.length > 0 && (

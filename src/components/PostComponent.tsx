@@ -5,6 +5,8 @@ import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
 import ParsedContent from './ParsedContent';
+import PollComponent from './PollComponent';
+import type { Poll } from '../types/poll';
 
 interface Account {
   id: string;
@@ -60,6 +62,8 @@ interface Status {
   reblogged: boolean;
   favourited: boolean;
   bookmarked?: boolean;
+  poll?: Poll | null;
+  poll_id?: string;
   reblog?: Status;
   url: string;
   emoji_reactions?: EmojiReaction[];
@@ -676,6 +680,10 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
           onYouTubeClick={onYouTubeClick}
         />
       </div>
+
+      {(localStatus.poll || localStatus.poll_id) && (
+        <PollComponent poll={localStatus.poll ?? null} pollId={localStatus.poll_id} />
+      )}
 
       {/* Media attachments */}
       {localStatus.media_attachments.length > 0 && (

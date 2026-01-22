@@ -5,6 +5,7 @@ import { appState } from '../store/appState';
 import NotificationComponent from './NotificationComponent';
 import { updatePostEngagementCounts } from '../utils/postUpdates';
 import { useAbortControllers } from '../utils/useAbortControllers';
+import type { Poll } from '../types/poll';
 
 interface Account {
   id: string;
@@ -48,6 +49,8 @@ interface Status {
   reblogged: boolean;
   favourited: boolean;
   bookmarked?: boolean;
+  poll?: Poll | null;
+  poll_id?: string;
   reblog?: Status;
   url: string;
 }
