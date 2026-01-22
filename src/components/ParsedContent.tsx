@@ -176,6 +176,19 @@ const ParsedContent: React.FC<ParsedContentProps> = ({ html, mentions, emojis, o
               </span>
             );
           }
+
+          return (
+            <a
+              key={key}
+              href={href}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+              style={{ color: 'var(--win98-help-green)', textDecoration: 'none', cursor: 'pointer', fontStyle: 'italic' }}
+              title={`Open profile: ${textContent || href}`}
+            >
+              {children.length ? children : textContent}
+            </a>
+          );
         }
 
         if (classList.includes('hashtag') || rel.includes('tag')) {
@@ -185,7 +198,7 @@ const ParsedContent: React.FC<ParsedContentProps> = ({ html, mentions, emojis, o
               href={href || undefined}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: '#0000ff', textDecoration: 'underline' }}
+              style={{ color: 'var(--win98-help-green)', textDecoration: 'none', cursor: 'pointer' }}
             >
               {children}
             </a>
