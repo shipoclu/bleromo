@@ -21,6 +21,7 @@ import AboutWindow from './components/AboutWindow';
 import FollowersWindow from './components/FollowersWindow';
 import FollowingWindow from './components/FollowingWindow';
 import RawPostWindow from './components/RawPostWindow';
+import FollowRequestsWindow from './components/FollowRequestsWindow';
 
 const App: React.FC = () => {
   const snap = useSnapshot(appState);
@@ -430,6 +431,26 @@ const App: React.FC = () => {
     }
   };
 
+  const openFollowRequests = () => {
+    const followRequestsWindowId = 'follow-requests';
+    const existingWindow = windows.find((win: any) => win.id === followRequestsWindowId);
+
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow({ id: followRequestsWindowId });
+      }
+      focusWindow({ id: followRequestsWindowId });
+    } else {
+      addWindowWithDefaults({
+        id: followRequestsWindowId,
+        title: 'Follow Requests',
+        icon: <UserIcon />,
+        position: { x: 220, y: 160 },
+        size: { width: 450, height: 500 }
+      });
+    }
+  };
+
   const openImageViewer = (imageUrl: string, description?: string) => {
     // Create a unique ID based on MD5 hash of the image URL
     const createHash = (str: string) => {
@@ -809,6 +830,12 @@ const App: React.FC = () => {
     },
     {
       type: 'item' as const,
+      text: 'Follow Requests',
+      icon: <UserIcon />,
+      onClick: openFollowRequests
+    },
+    {
+      type: 'item' as const,
       text: 'Compose',
       icon: <ComposeIcon />,
       onClick: () => openComposeWindow()
@@ -1004,6 +1031,26 @@ const App: React.FC = () => {
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
+              onClose={() => removeWindow(win.id)}
+              onFocus={() => focusWindow({ id: win.id })}
+              onMinimize={() => minimizeWindow({ id: win.id })}
+              onMaximize={() => maximizeWindow({ id: win.id })}
+              onRestore={() => restoreWindow({ id: win.id })}
+              onMove={moveWindow}
+              onResize={resizeWindow}
+            />
+          );
+        }
+        if (win.id === 'follow-requests') {
+          return (
+            <FollowRequestsWindow
+              key={win.id}
+              id={win.id}
+              onUserClick={openUserProfile}
+              isFocused={win.isFocused}
+              isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
+              zIndex={win.zIndex}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}

@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import FollowRequestItem from './FollowRequestItem';
 
 interface Account {
   id: string;
@@ -60,6 +61,8 @@ interface NotificationComponentProps {
   onConversationClick?: (statusId: string) => void;
   onUserClick?: (userId: string) => void;
   onReplyClick?: (statusId: string, mentionHandles: string[]) => void;
+  onFollowRequestApprove?: (accountId: string) => Promise<void>;
+  onFollowRequestDeny?: (accountId: string) => Promise<void>;
 }
 
 const NotificationComponent: React.FC<NotificationComponentProps> = ({ 
@@ -70,7 +73,9 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   onYouTubeClick: _onYouTubeClick,
   onConversationClick,
   onUserClick,
-  onReplyClick
+  onReplyClick,
+  onFollowRequestApprove,
+  onFollowRequestDeny
 }) => {
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
@@ -156,6 +161,86 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
         return 'notified you';
     }
   };
+
+  if (notification.type === 'follow_request') {
+    return (
+      <div style={{
+        padding: '8px',
+        border: '1px solid #808080',
+        backgroundColor: '#ffffff',
+        marginBottom: '8px',
+        fontFamily: 'MS Sans Serif, sans-serif',
+        fontSize: '12px'
+      }}>
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '8px'
+        }}>
+          <img 
+            src={notification.account.avatar} 
+            alt="Avatar"
+            style={{
+              width: '32px',
+              height: '32px',
+              border: '1px solid #808080'
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              marginBottom: '2px',
+              overflow: 'hidden'
+            }}>
+              <span style={{ fontSize: '14px', flexShrink: 0 }}>{getNotificationIcon(notification.type)}</span>
+              <strong 
+                style={{ 
+                  cursor: onUserClick ? 'pointer' : 'default',
+                  textDecoration: onUserClick ? 'underline' : 'none',
+                  color: onUserClick ? 'var(--win98-help-green)' : 'inherit',
+                  flexShrink: 0
+                }}
+                onClick={() => onUserClick && onUserClick(notification.account.id)}
+                dangerouslySetInnerHTML={{
+                  __html: processedDisplayName
+                }}
+              />
+              <span 
+                title={`@${notification.account.acct}`}
+                style={{ 
+                  color: '#808080', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  minWidth: 0,
+                  flex: 1
+                }}
+              >@{notification.account.acct}</span>
+              <span style={{ color: '#808080', flexShrink: 0 }}>requested to follow you</span>
+            </div>
+            <div style={{ 
+              fontSize: '11px', 
+              color: '#808080' 
+            }}>
+              {formatDate(notification.created_at)}
+            </div>
+          </div>
+        </div>
+
+        {onFollowRequestApprove && onFollowRequestDeny && (
+          <FollowRequestItem
+            account={notification.account}
+            onApprove={onFollowRequestApprove}
+            onDeny={onFollowRequestDeny}
+            onUserClick={onUserClick}
+            compact={true}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{

@@ -201,6 +201,40 @@ interface NotificationsWindowProps {
     }
   };
 
+  const handleFollowRequestApprove = async (accountId: string) => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await fetch(`${snap.serverUrl}/api/v1/follow_requests/${accountId}/authorize`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to approve follow request: ${response.status}`);
+    }
+  };
+
+  const handleFollowRequestDeny = async (accountId: string) => {
+    if (!snap.accessToken || !snap.serverUrl) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await fetch(`${snap.serverUrl}/api/v1/follow_requests/${accountId}/reject`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${snap.accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to deny follow request: ${response.status}`);
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
   }, []);
@@ -335,6 +369,8 @@ interface NotificationsWindowProps {
               onConversationClick={onConversationClick}
               onUserClick={onUserClick}
               onReplyClick={onReplyClick}
+              onFollowRequestApprove={handleFollowRequestApprove}
+              onFollowRequestDeny={handleFollowRequestDeny}
             />
           ))}
 

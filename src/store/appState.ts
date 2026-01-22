@@ -20,6 +20,7 @@ export interface AppState {
   serverUrl: string | null;
   accessToken: string | null;
   userData: UserData | null;
+  followRequestDecisions: Record<string, 'approved' | 'denied'>;
 }
 
 export const appState = proxy<AppState>({
@@ -29,6 +30,7 @@ export const appState = proxy<AppState>({
   serverUrl: null,
   accessToken: null,
   userData: null,
+  followRequestDecisions: {},
 });
 
 export const startLogin = (handle: string) => {
@@ -72,6 +74,7 @@ export const logout = () => {
   appState.serverUrl = null;
   appState.accessToken = null;
   appState.userData = null;
+  appState.followRequestDecisions = {};
   
   // Only remove auth data, keep OAuth app credentials per-server
   localStorage.removeItem('bleromofw_auth');
