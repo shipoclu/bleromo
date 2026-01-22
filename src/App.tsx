@@ -592,7 +592,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleEmojiReact = async (statusId: string, emojiName: string, currentlyReacted: boolean): Promise<any> => {
+  const handleEmojiReact = async (statusId: string, emojiName: string, _currentlyReacted: boolean): Promise<any> => {
     if (!snap.accessToken || !snap.serverUrl) {
       throw new Error('Not authenticated');
     }
@@ -960,7 +960,6 @@ const App: React.FC = () => {
               onConversationClick={openConversation}
               onUserClick={openUserProfile}
               onReplyClick={openComposeWindow}
-              onEmojiPickerClick={openEmojiPicker}
               onClose={() => removeWindow(win.id)}
               onFocus={() => focusWindow({ id: win.id })}
               onMinimize={() => minimizeWindow({ id: win.id })}

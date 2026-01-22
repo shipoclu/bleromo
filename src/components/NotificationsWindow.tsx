@@ -40,6 +40,7 @@ interface Status {
   favourites_count: number;
   reblogged: boolean;
   favourited: boolean;
+  bookmarked?: boolean;
   reblog?: Status;
   url: string;
 }
@@ -75,20 +76,19 @@ interface NotificationsWindowProps {
   zIndex: number;
 }
 
-const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
-  id,
-  onImageClick,
-  onVideoClick,
-  onAudioClick,
-  onYouTubeClick,
-  onConversationClick,
-  onUserClick,
-  onReplyClick,
-  onEmojiPickerClick,
-  onClose,
-  onFocus,
-  onMinimize,
-  onMaximize,
+  const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
+    id,
+    onImageClick,
+    onVideoClick,
+    onAudioClick,
+    onYouTubeClick,
+    onConversationClick,
+    onUserClick,
+    onReplyClick,
+    onClose,
+    onFocus,
+    onMinimize,
+    onMaximize,
   onRestore,
   onMove,
   onResize,
@@ -335,7 +335,6 @@ const NotificationsWindow: React.FC<NotificationsWindowProps> = ({
               onConversationClick={onConversationClick}
               onUserClick={onUserClick}
               onReplyClick={onReplyClick}
-              onEmojiPickerClick={onEmojiPickerClick}
             />
           ))}
 

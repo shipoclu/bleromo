@@ -37,6 +37,7 @@ interface Status {
   favourites_count: number;
   reblogged: boolean;
   favourited: boolean;
+  bookmarked?: boolean;
   reblog?: Status;
   url: string;
 }
@@ -66,7 +67,7 @@ const NotificationComponent: React.FC<NotificationComponentProps> = ({
   onImageClick, 
   onVideoClick,
   onAudioClick,
-  onYouTubeClick,
+  onYouTubeClick: _onYouTubeClick,
   onConversationClick,
   onUserClick,
   onReplyClick

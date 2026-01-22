@@ -58,7 +58,7 @@ interface Status {
   favourites_count: number;
   reblogged: boolean;
   favourited: boolean;
-  bookmarked: boolean;
+  bookmarked?: boolean;
   reblog?: Status;
   url: string;
   emoji_reactions?: EmojiReaction[];
@@ -167,7 +167,10 @@ const VideoThumbnail: React.FC<{ videoUrl: string; onVideoClick: () => void }> =
 
 const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onVideoClick, onAudioClick, onYouTubeClick, onConversationClick, onUserClick, onReplyClick, onFavoriteClick, onReblogClick, onEmojiReactClick, onEmojiPickerClick, onBookmarkClick, onRawPostClick }) => {
   const snap = useSnapshot(appState);
-  const [localStatus, setLocalStatus] = useState(status);
+  const [localStatus, setLocalStatus] = useState(() => ({
+    ...status,
+    bookmarked: status.bookmarked ?? false
+  }));
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isReblogging, setIsReblogging] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
@@ -179,7 +182,10 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
 
   // Update local status when prop changes
   useEffect(() => {
-    setLocalStatus(status);
+    setLocalStatus({
+      ...status,
+      bookmarked: status.bookmarked ?? false
+    });
   }, [status]);
 
   // Listen for emoji reaction updates from the engagement count system
@@ -634,7 +640,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         console.log('🔖 Starting bookmark API call...');
         
         try {
-          const result = await onBookmarkClick(localStatus.id, localStatus.bookmarked);
+          const result = await onBookmarkClick(localStatus.id, localStatus.bookmarked ?? false);
           console.log('🔖 Bookmark API result:', result);
           
           const updatedStatus = {

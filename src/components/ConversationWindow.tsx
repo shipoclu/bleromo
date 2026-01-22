@@ -61,6 +61,7 @@ interface Status {
   favourites_count: number;
   reblogged: boolean;
   favourited: boolean;
+  bookmarked?: boolean;
   reblog?: Status;
   url: string;
   emoji_reactions?: EmojiReaction[];
