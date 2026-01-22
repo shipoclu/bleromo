@@ -37,6 +37,13 @@ ul.tree-view {
   -moz-osx-font-smoothing: auto;
 }
 
+textarea,
+ul.tree-view {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 #root {
   width: 100%;
   height: 100vh;
