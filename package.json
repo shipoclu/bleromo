@@ -15,7 +15,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "valtio": "^2.1.8",
-    "wtkrjs": "git+ssh://git@git.shipoclu.com:2222/moon/wtkrjs.git"
+    "wtkrjs": "git+https://git.shipoclu.com/moon/wtkrjs.git"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
