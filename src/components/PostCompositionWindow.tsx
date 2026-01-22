@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
+import PollComposer from './PollComposer';
 import { useAbortControllers } from '../utils/useAbortControllers';
 
 interface ReplyToStatus {
@@ -55,6 +56,8 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
   const [postBody, setPostBody] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [sensitiveMedia, setSensitiveMedia] = useState(false);
+  const [pollEnabled, setPollEnabled] = useState(false);
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [replyToStatus, setReplyToStatus] = useState<ReplyToStatus | null>(null);
@@ -148,11 +151,55 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
 
   const addAttachments = (files: File[]) => {
     if (files.length === 0) return;
+    if (pollEnabled) {
+      setError('Attachments are disabled while a poll is attached');
+      return;
+    }
     setAttachments(prev => [...prev, ...files]);
   };
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const cleanedPollOptions = useMemo(() => {
+    return pollOptions.map(option => option.trim()).filter(option => option.length > 0);
+  }, [pollOptions]);
+
+  const canSubmit = useMemo(() => {
+    if (pollEnabled) {
+      return cleanedPollOptions.length >= 2 && !isSubmitting;
+    }
+    return (postBody.trim() || attachments.length > 0) && !isSubmitting;
+  }, [attachments.length, cleanedPollOptions.length, isSubmitting, pollEnabled, postBody]);
+
+  const togglePollEnabled = () => {
+    setError(null);
+    setPollEnabled((prev) => {
+      const next = !prev;
+      if (next) {
+        if (attachments.length > 0) {
+          setAttachments([]);
+          setSensitiveMedia(false);
+        }
+        if (pollOptions.length < 2) {
+          setPollOptions(['', '']);
+        }
+      }
+      return next;
+    });
+  };
+
+  const handlePollOptionChange = (index: number, value: string) => {
+    setPollOptions(prev => prev.map((option, idx) => (idx === index ? value : option)));
+  };
+
+  const handleAddPollOption = () => {
+    setPollOptions(prev => [...prev, '']);
+  };
+
+  const handleRemovePollOption = (index: number) => {
+    setPollOptions(prev => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmit = async () => {
@@ -161,8 +208,18 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
       return;
     }
 
-    if (!postBody.trim() && attachments.length === 0) {
+    if (!pollEnabled && !postBody.trim() && attachments.length === 0) {
       setError('Post body or attachments required');
+      return;
+    }
+
+    if (pollEnabled && cleanedPollOptions.length < 2) {
+      setError('Poll requires at least two options');
+      return;
+    }
+
+    if (pollEnabled && attachments.length > 0) {
+      setError('Polls cannot include media attachments');
       return;
     }
 
@@ -219,6 +276,14 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
         statusData.sensitive = true;
       }
 
+      if (pollEnabled) {
+        statusData.poll = {
+          options: cleanedPollOptions,
+          expires_in: 60 * 60 * 24,
+          multiple: false
+        };
+      }
+
       const response = await fetch(`${snap.serverUrl}/api/v1/statuses`, {
         method: 'POST',
         headers: {
@@ -250,6 +315,8 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
       setAttachments([]);
       setSensitiveMedia(false);
       setVisibility('public');
+      setPollEnabled(false);
+      setPollOptions(['', '']);
       if (shouldClose) {
         onClose();
       }
@@ -388,7 +455,7 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
               if (e.nativeEvent.isComposing) return;
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
-                if (!isSubmitting && (postBody.trim() || attachments.length > 0)) {
+                if (canSubmit) {
                   handleSubmit();
                 }
               }
@@ -441,13 +508,16 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
             <label style={{ fontWeight: 'bold' }}>Attachments:</label>
             <button
               onClick={() => fileInputRef.current?.click()}
+              disabled={pollEnabled}
               style={{
                 padding: '2px 8px',
                 fontSize: '12px',
                 border: '2px outset #c0c0c0',
                 backgroundColor: '#c0c0c0',
-                cursor: 'pointer'
+                cursor: pollEnabled ? 'not-allowed' : 'pointer',
+                opacity: pollEnabled ? 0.6 : 1
               }}
+              title={pollEnabled ? 'Attachments are disabled when a poll is attached' : 'Add file'}
             >
               Add File
             </button>
@@ -511,6 +581,12 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
               </label>
             </div>
           )}
+
+          {pollEnabled && (
+            <div style={{ fontSize: '11px', color: '#808080', marginTop: '4px', fontStyle: 'italic' }}>
+              Attachments are disabled while a poll is attached.
+            </div>
+          )}
         </div>
 
         {/* Visibility Selector */}
@@ -518,28 +594,43 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
           <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
             Post Visibility:
           </label>
-          <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as 'public' | 'unlisted' | 'private' | 'direct')}
-            disabled={replyToStatus?.visibility === 'direct'}
-            style={{
-              padding: '4px 8px',
-              border: '2px inset #c0c0c0',
-              fontSize: '12px',
-              fontFamily: 'var(--win98-font)',
-              backgroundColor: replyToStatus?.visibility === 'direct' ? '#f0f0f0' : 'white',
-              color: 'black',
-              cursor: replyToStatus?.visibility === 'direct' ? 'not-allowed' : 'pointer',
-              height: '25px',
-              width: '200px',
-              lineHeight: '16px'
-            }}
-          >
-            <option value="public">🌐 Public</option>
-            <option value="unlisted">🔓 Unlisted</option>
-            <option value="private">🔒 Followers only</option>
-            <option value="direct">✉️ Direct</option>
-          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <select
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as 'public' | 'unlisted' | 'private' | 'direct')}
+              disabled={replyToStatus?.visibility === 'direct'}
+              style={{
+                padding: '4px 8px',
+                border: '2px inset #c0c0c0',
+                fontSize: '12px',
+                fontFamily: 'var(--win98-font)',
+                backgroundColor: replyToStatus?.visibility === 'direct' ? '#f0f0f0' : 'white',
+                color: 'black',
+                cursor: replyToStatus?.visibility === 'direct' ? 'not-allowed' : 'pointer',
+                height: '25px',
+                width: '200px',
+                lineHeight: '16px'
+              }}
+            >
+              <option value="public">🌐 Public</option>
+              <option value="unlisted">🔓 Unlisted</option>
+              <option value="private">🔒 Followers only</option>
+              <option value="direct">✉️ Direct</option>
+            </select>
+            <button
+              onClick={togglePollEnabled}
+              style={{
+                padding: '4px 10px',
+                fontSize: '12px',
+                border: '2px outset #c0c0c0',
+                backgroundColor: pollEnabled ? '#d0d0d0' : '#c0c0c0',
+                cursor: 'pointer',
+                height: '25px'
+              }}
+            >
+              {pollEnabled ? 'Poll ✓' : 'Poll'}
+            </button>
+          </div>
           {replyToStatus?.visibility === 'direct' && (
             <div style={{ 
               fontSize: '11px', 
@@ -566,6 +657,20 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
           )}
         </div>
 
+        {pollEnabled && (
+          <div>
+            <PollComposer
+              options={pollOptions}
+              onOptionChange={handlePollOptionChange}
+              onAddOption={handleAddPollOption}
+              onRemoveOption={handleRemovePollOption}
+            />
+            <div style={{ fontSize: '11px', color: '#808080', marginTop: '4px', fontStyle: 'italic' }}>
+              Polls are posted with a 24-hour duration. At least two options are required.
+            </div>
+          </div>
+        )}
+
         {/* Submit Section */}
         <div style={{
           display: 'flex',
@@ -587,14 +692,14 @@ const PostCompositionWindow: React.FC<PostCompositionWindowProps> = ({
           </div>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || (!postBody.trim() && attachments.length === 0)}
+            disabled={!canSubmit}
             style={{
               padding: '6px 20px',
               fontSize: '12px',
               border: '2px outset #c0c0c0',
               backgroundColor: '#c0c0c0',
-              cursor: (isSubmitting || (!postBody.trim() && attachments.length === 0)) ? 'default' : 'pointer',
-              opacity: (isSubmitting || (!postBody.trim() && attachments.length === 0)) ? 0.6 : 1
+              cursor: canSubmit ? 'pointer' : 'default',
+              opacity: canSubmit ? 1 : 0.6
             }}
           >
             {isSubmitting ? 'Posting...' : (replyToStatusId ? 'Reply' : 'Post')}
