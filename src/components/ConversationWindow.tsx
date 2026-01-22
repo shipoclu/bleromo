@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { DesktopWindow, type WindowMoveEvent, type WindowResizeEvent } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
 import { appState } from '../store/appState';
@@ -126,6 +126,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
   const [originalStatus, setOriginalStatus] = useState<Status | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const fetchConversation = async () => {
     if (!snap.accessToken || !snap.serverUrl) return;
@@ -195,6 +196,24 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
   useEffect(() => {
     fetchConversation();
   }, [statusId]);
+
+  const scrollToHighlightedPost = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const highlighted = container.querySelector('[data-highlighted-post="true"]') as HTMLElement | null;
+    if (!highlighted) return;
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = highlighted.getBoundingClientRect();
+    const isVisible = targetRect.top >= containerRect.top && targetRect.bottom <= containerRect.bottom;
+    if (isVisible) return;
+    highlighted.scrollIntoView({ block: 'center' });
+  }, []);
+
+  useEffect(() => {
+    if (!conversation || !originalStatus) return;
+    const frame = requestAnimationFrame(scrollToHighlightedPost);
+    return () => cancelAnimationFrame(frame);
+  }, [conversation, originalStatus?.id, scrollToHighlightedPost]);
 
   const getAllPosts = (): Status[] => {
     if (!conversation || !originalStatus) return [];
@@ -343,6 +362,7 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
 
         {/* Content area */}
         <div 
+          ref={scrollContainerRef}
           data-window-type="Conversation"
           style={{
             flex: 1,
@@ -387,7 +407,11 @@ const ConversationWindow: React.FC<ConversationWindowProps> = ({
           )}
 
           {getAllPosts().map((status, index) => (
-            <div key={status.id} style={{ position: 'relative' }}>
+            <div
+              key={status.id}
+              data-highlighted-post={isOriginalPost(status) ? 'true' : undefined}
+              style={{ position: 'relative' }}
+            >
               {/* Highlight the original post */}
               {isOriginalPost(status) && (
                 <div style={{
