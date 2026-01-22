@@ -205,17 +205,62 @@ const ParsedContent: React.FC<ParsedContentProps> = ({ html, mentions, emojis, o
           );
         }
 
-        if (href && onYouTubeClick) {
+        if (href) {
           const videoId = extractYouTubeVideoId(href);
           if (videoId) {
-            return (
-              <span
-                key={key}
-                style={{ color: '#ff0000', textDecoration: 'underline', cursor: 'pointer' }}
-                onClick={() => onYouTubeClick(videoId, href)}
-                title={`Open YouTube video: ${href}`}
+            const linkContent = children.length ? children : (textContent || href);
+            const linkElement = (
+              <a
+                key={`${key}-link`}
+                href={href}
+                target="_blank"
+                rel="nofollow noopener noreferrer"
+                style={{ color: '#ff0000', textDecoration: 'underline' }}
+                title={`Open YouTube link: ${href}`}
               >
-                {textContent || href}
+                {linkContent}
+              </a>
+            );
+
+            if (!onYouTubeClick) {
+              return linkElement;
+            }
+
+            return (
+              <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                {linkElement}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onYouTubeClick(videoId, href);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onYouTubeClick(videoId, href);
+                    }
+                  }}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    lineHeight: 1,
+                    fontSize: '14px',
+                    fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol",var(--win98-font)',
+                    userSelect: 'none'
+                  }}
+                  title="Open YouTube embed"
+                  aria-label="Open YouTube embed"
+                >
+                  📺
+                </span>
               </span>
             );
           }

@@ -593,7 +593,16 @@ const App: React.FC = () => {
 
   const openYouTubePlayer = (videoId: string, videoUrl: string) => {
     console.log('openYouTubePlayer called with:', videoId, videoUrl);
-    const youtubeWindowId = `youtube-${videoId}`;
+    const createHash = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash).toString(16);
+    };
+    const youtubeWindowId = `youtube-${createHash(videoUrl)}`;
     console.log('YouTube window ID:', youtubeWindowId);
     const existingWindow = windows.find((win: any) => win.id === youtubeWindowId);
     
