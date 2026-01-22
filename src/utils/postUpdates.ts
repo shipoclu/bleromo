@@ -13,6 +13,7 @@ interface Status {
   reblogged: boolean;
   favourited: boolean;
   sensitive: boolean;
+  reblog?: Status;
   emoji_reactions?: EmojiReaction[];
   pleroma?: {
     emoji_reactions?: EmojiReaction[];
@@ -38,11 +39,18 @@ const getEmojiReactions = (status: Status): EmojiReaction[] => {
 };
 
 export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: string) => {
+  const normalizedStatuses = statuses.map(status => status.reblog ?? status);
+  const uniqueStatuses = new Map<string, Status>();
+  normalizedStatuses.forEach(status => {
+    uniqueStatuses.set(status.id, status);
+  });
+  const dedupedStatuses = Array.from(uniqueStatuses.values());
+
   let totalUpdatesCount = 0;
   let windowUpdates: Record<string, number> = {};
   
   // Log posts with favourites/reblogs received
-  const postsWithEngagement = statuses.filter(status => 
+  const postsWithEngagement = dedupedStatuses.filter(status => 
     status.favourites_count > 0 || status.reblogs_count > 0 || status.favourited || status.reblogged
   );
   
@@ -58,7 +66,7 @@ export const updatePostEngagementCounts = (statuses: Status[], sourceWindow?: st
     );
   }
 
-  statuses.forEach(status => {
+  dedupedStatuses.forEach(status => {
     // Find all posts with this ID across all windows
     const postElements = document.querySelectorAll(`[data-post-id="${status.id}"]`);
     
