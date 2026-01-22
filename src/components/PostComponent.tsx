@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DesktopMenu, type Position } from 'wtkrjs';
 import { useSnapshot } from 'valtio';
@@ -175,6 +175,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   const [reactingEmoji, setReactingEmoji] = useState<string | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<Position>({ x: 0, y: 0 });
+  const postRef = useRef<HTMLDivElement | null>(null);
 
   // Update local status when prop changes
   useEffect(() => {
@@ -198,7 +199,7 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
       }
     };
 
-    const postElement = document.querySelector(`[data-post-id="${localStatus.id}"]`);
+    const postElement = postRef.current;
     if (postElement) {
       postElement.addEventListener('emojiReactionsUpdate', handleEmojiUpdate as EventListener);
       return () => {
@@ -703,7 +704,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   // If this is a boost/reblog, show the boost info and the original post
   if (status.reblog) {
     return (
-      <div 
+      <div
+        ref={postRef}
         data-post-id={localStatus.id}
         style={{
           padding: '8px',
@@ -756,7 +758,8 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
   // Regular post
   return (
     <>
-      <div 
+      <div
+        ref={postRef}
         data-post-id={localStatus.id}
         style={{
           padding: '8px',
