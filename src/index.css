@@ -1,26 +1,9 @@
 /* CSS Variables for Windows 98 Theme */
 :root {
   --win98-help-green: #008000;
-  --win98-font: "MS Sans Serif Embedded", "MS Sans Serif", Arial, sans-serif;
+  --win98-font: "Pixelated MS Sans Serif", "MS Sans Serif", Arial, sans-serif;
 }
 
-@font-face {
-  font-family: "MS Sans Serif Embedded";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("98.css/fonts/converted/ms_sans_serif.woff2") format("woff2"),
-       url("98.css/fonts/converted/ms_sans_serif.woff") format("woff");
-}
-
-@font-face {
-  font-family: "MS Sans Serif Embedded";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("98.css/fonts/converted/ms_sans_serif_bold.woff2") format("woff2"),
-       url("98.css/fonts/converted/ms_sans_serif_bold.woff") format("woff");
-}
 
 /* CSS Reset for wtkrjs compatibility */
 *, *::before, *::after {
