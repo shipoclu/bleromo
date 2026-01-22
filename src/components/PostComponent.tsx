@@ -219,6 +219,15 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
 
+  const htmlToPlainText = useCallback((html: string) => {
+    if (!html) return '';
+    const normalized = html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n');
+    const doc = new DOMParser().parseFromString(normalized, 'text/html');
+    return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  }, []);
+
   const displayName = localStatus.account.display_name || localStatus.account.username;
 
   const formatNumber = (num: number) => {
@@ -370,6 +379,35 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
     setContextMenuOpen(false);
   };
 
+  const handleCopyRichContent = async () => {
+    const htmlContent = localStatus.content || '';
+    const plainText = htmlToPlainText(htmlContent);
+    try {
+      if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+        const item = new ClipboardItem({
+          'text/html': new Blob([htmlContent], { type: 'text/html' }),
+          'text/plain': new Blob([plainText], { type: 'text/plain' })
+        });
+        await navigator.clipboard.write([item]);
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(plainText || htmlContent);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = plainText || htmlContent;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+    } catch (error) {
+      console.error('📋 Error copying post content:', error);
+    } finally {
+      setContextMenuOpen(false);
+    }
+  };
+
   // Create context menu items
   const contextMenuItems = [
     {
@@ -416,6 +454,12 @@ const PostComponent: React.FC<PostComponentProps> = ({ status, onImageClick, onV
         console.log('🔖 Menu closed');
       },
       disabled: isBookmarking
+    },
+    {
+      type: 'item' as const,
+      text: 'Copy',
+      onClick: handleCopyRichContent,
+      disabled: false
     },
     {
       type: 'item' as const,
